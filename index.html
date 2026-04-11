@@ -232,6 +232,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .mini-day.has-tasks::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--acc)}
 .mini-day.today-mini{background:var(--acc);color:#fff;border-radius:50%}
 .mini-day.today-mini::after{display:none}
+.mini-day.has-meeting{font-weight:700;color:#9B6DE8}
+.mini-day.has-meeting::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#9B6DE8}
 
 /* ── SEARCH OVERLAY ──────────────────────────────────── */
 .search-overlay{position:fixed;inset:0;background:rgba(15,18,35,.5);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding-top:80px;backdrop-filter:blur(2px)}
@@ -249,6 +251,50 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .sr-snippet{font-size:12px;color:var(--tm);line-height:1.4}
 .sr-snippet mark{background:#FFE566;border-radius:2px;padding:0 1px}
 .search-empty{padding:24px;text-align:center;color:var(--tm);font-size:13px}
+
+/* ── PROJECT SUMMARY ─────────────────────────────────── */
+.summary-ta{width:100%;border:1px solid var(--bdr);border-radius:var(--rs);padding:10px 12px;font-size:13px;font-family:inherit;color:var(--txt);outline:none;resize:vertical;min-height:64px;line-height:1.65;background:#fff;transition:border-color .15s}
+.summary-ta:focus{border-color:var(--acc)}
+.summary-ta::placeholder{color:var(--bdr)}
+.proj-dates-row{display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.proj-date-field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tm)}
+.proj-date-field strong{font-weight:600;color:var(--txt)}
+.proj-date-inp{border:1px solid var(--bdr);border-radius:var(--rs);padding:4px 8px;font-size:12px;font-family:inherit;color:var(--txt);outline:none;background:#fff;transition:border-color .15s}
+.proj-date-inp:focus{border-color:var(--acc)}
+
+/* ── TASK PROGRESS ───────────────────────────────────── */
+.prog-wrap{margin-top:4px}
+.prog-sel{font-size:11px;font-weight:600;border:none;border-radius:20px;padding:3px 10px 3px 8px;cursor:pointer;font-family:inherit;outline:none;appearance:none;-webkit-appearance:none;transition:all .14s}
+.prog-not-started{background:#ECEEF5;color:var(--tm)}
+.prog-in-progress{background:var(--warn-l);color:var(--warn)}
+.prog-completed{background:var(--ok-l);color:var(--ok)}
+.task-txt.in-progress{color:var(--txt)}
+.task-txt.completed{text-decoration:line-through;color:var(--tm)}
+
+/* ── MEETINGS ────────────────────────────────────────── */
+.meeting-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr-l)}
+.meeting-item:last-of-type{border-bottom:none}
+.meeting-ico{width:30px;height:30px;border-radius:var(--rs);background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.meeting-info{flex:1;min-width:0}
+.meeting-title-inp{border:none;background:transparent;font-size:13px;font-weight:500;color:var(--txt);font-family:inherit;outline:none;width:100%}
+.meeting-date-inp{font-size:11px;color:var(--tm);border:none;background:transparent;cursor:pointer;outline:none;font-family:inherit;padding:0;margin-top:2px;display:block}
+.meeting-date-inp:focus{color:var(--acc)}
+.meeting-del{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:16px;padding:0 3px;opacity:0;transition:opacity .12s;flex-shrink:0}
+.meeting-item:hover .meeting-del{opacity:1}
+.meeting-del:hover{color:var(--red)}
+.add-meeting-row{display:flex;gap:8px;align-items:center;padding:10px 0 0;border-top:1px dashed var(--bdr);margin-top:6px}
+.add-meeting-inp{flex:1;border:none;background:transparent;font-size:13px;color:var(--txt);font-family:inherit;outline:none;padding:0}
+.add-meeting-inp::placeholder{color:var(--bdr)}
+
+/* ── CALENDAR FILTER + MEETING CHIPS ────────────────── */
+.cal-filter-row{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.cal-filter-lbl{font-size:11px;font-weight:600;color:var(--tm);margin-right:2px;text-transform:uppercase;letter-spacing:.04em}
+.cal-filt-btn{font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;font-family:inherit;color:var(--tm);transition:all .14s}
+.cal-filt-btn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.cal-chip-meeting{background:#9B6DE8!important}
+.cal-chip-ns{opacity:.55}
+.cal-chip-ip{outline:2px solid var(--warn);outline-offset:-2px}
+.cal-chip-done{opacity:.4}
 
 /* ── LOCK SCREEN ─────────────────────────────────────── */
 .lock-screen{position:fixed;inset:0;background:var(--sb);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:0}
@@ -396,7 +442,7 @@ function stripHtml(h){return(h||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').
 //  DEFAULT DATA
 // ══════════════════════════════════════════════════════
 const COLORS=['#6376DA','#E88B6D','#6DB8E8','#9B6DE8','#50C08A','#E8CC5A','#E86D8B','#5AC8E8']
-function mkProject(name){return{id:uid(),name,status:'active',tasks:[],notes:[],links:[]}}
+function mkProject(name){return{id:uid(),name,status:'active',summary:'',startDate:'',endDate:'',tasks:[],notes:[],links:[],meetings:[]}}
 function mkBrand(name,projects=[]){return{id:uid(),name,projects}}
 function mkMember(name,color,brands=[],isMe=false){return{id:uid(),name,color,brands,isMe}}
 
@@ -418,9 +464,20 @@ const DEFAULT={
 let state = deepClone(DEFAULT)
 
 function migrate(d){
-  // migrate task.due → task.dueDate; note.content → note.body
   for(const m of d.members||[])for(const b of m.brands||[])for(const p of b.projects||[]){
-    for(const t of p.tasks||[]){if('due'in t&&!('dueDate'in t)){t.dueDate=t.due;delete t.due}if(!('startDate'in t))t.startDate=''}
+    // Project-level fields
+    if(!('summary'  in p))p.summary=''
+    if(!('startDate'in p))p.startDate=''
+    if(!('endDate'  in p))p.endDate=''
+    if(!('meetings' in p))p.meetings=[]
+    // Tasks
+    for(const t of p.tasks||[]){
+      if('due'in t&&!('dueDate'in t)){t.dueDate=t.due;delete t.due}
+      if(!('startDate'in t))t.startDate=''
+      // Migrate done → progress
+      if(!('progress'in t))t.progress=t.done?'completed':'not-started'
+    }
+    // Notes
     for(const n of p.notes||[]){if('content'in n&&!('body'in n)){n.body=n.content;delete n.content}}
   }
   return d
@@ -467,6 +524,7 @@ let selId=null          // selected project id
 let viewMode='detail'   // 'detail'|'calendar'|'sync'
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
+let calFilter='all'     // 'all'|'tasks'|'meetings'
 let showDone=false
 let openMembers=new Set(state.members.filter(m=>m.isMe).map(m=>m.id))
 let openBrands=new Set()
@@ -640,9 +698,11 @@ function renderMain(){
 // ══════════════════════════════════════════════════════
 function renderDetail(p,m,b){
   const isArch=p.status==='archived'
-  const done=p.tasks.filter(t=>t.done)
-  const open=p.tasks.filter(t=>!t.done)
-  const shown=showDone?p.tasks:open
+  const completed=p.tasks.filter(t=>t.progress==='completed')
+  const inProg=p.tasks.filter(t=>t.progress==='in-progress')
+  const notStarted=p.tasks.filter(t=>t.progress==='not-started')
+  const shown=showDone?p.tasks:p.tasks.filter(t=>t.progress!=='completed')
+  const meetings=[...(p.meetings||[])].sort((a,b)=>a.date.localeCompare(b.date))
 
   return `
     ${isArch?`<div class="arch-banner">📦 Archived — unarchive to edit</div>`:''}
@@ -653,15 +713,60 @@ function renderDetail(p,m,b){
       <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
     </div>
 
+    <!-- SUMMARY -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">📋 Project Summary</div>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
+          ${isArch?'disabled':''}
+          onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
+        <div class="proj-dates-row">
+          <div class="proj-date-field">
+            <strong>Project Start</strong>
+            <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
+              onchange="updateProjStart(this.value)" title="Overall project start date">
+          </div>
+          <div class="proj-date-field">
+            <strong>Project End</strong>
+            <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
+              onchange="updateProjEnd(this.value)" title="Overall project end date">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEETINGS -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">🤝 Meetings<span class="card-cnt">${meetings.length}</span></div>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        <div id="meetingList">
+          ${meetings.map(mt=>meetingHTML(mt)).join('')}
+        </div>
+        ${!isArch?`<div class="add-meeting-row">
+          <input class="add-meeting-inp" id="newMTitle" placeholder="Meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
+          <input type="date" class="add-date-inp" id="newMDate" title="Meeting date">
+          <button class="btn btn-primary btn-sm" onclick="doAddMeeting()">Add</button>
+        </div>`:''}
+      </div>
+    </div>
+
     <!-- TASKS -->
     <div class="card">
       <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">✅ Tasks<span class="card-cnt">${open.length} open${done.length?` · ${done.length} done`:''}</span></div>
+        <div class="card-ttl">✅ Tasks
+          <span class="card-cnt">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</span>
+        </div>
         <span class="card-chev open">▶</span>
       </div>
       <div class="card-body open">
         <div id="taskList">${shown.map(t=>taskHTML(t)).join('')}</div>
-        ${done.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${done.length} completed`}</button>`:''}
+        ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
         ${!isArch?`<div class="add-task-row">
           <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
           <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
@@ -705,15 +810,17 @@ function renderDetail(p,m,b){
 // ── TASK HTML ─────────────────────────────────────────
 function taskHTML(t){
   const td=todayIso()
-  let dc='',sc=''
-  if(t.dueDate&&!t.done){
+  const prog=t.progress||'not-started'
+  let dc=''
+  if(t.dueDate&&prog!=='completed'){
     if(t.dueDate<td)dc='date-over'
     else{const diff=(new Date(t.dueDate)-new Date(td))/864e5;if(diff<=3)dc='date-soon'}
   }
+  const txtClass=prog==='completed'?'done':''
   return `<div class="task-item" data-tid="${t.id}">
-    <input type="checkbox" class="task-chk" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
+    <input type="checkbox" class="task-chk" ${prog==='completed'?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
     <div class="task-body">
-      <textarea class="task-txt ${t.done?'done':''}" rows="1"
+      <textarea class="task-txt ${txtClass}" rows="1"
         onblur="updateTaskTxt('${t.id}',this.value)" oninput="autoGrow(this)">${esc(t.text)}</textarea>
       <div class="task-dates">
         <div class="task-date-field">
@@ -724,9 +831,30 @@ function taskHTML(t){
           <span class="date-lbl">Due</span>
           <input type="date" class="date-inp ${dc}" value="${t.dueDate||''}" title="Due date" onchange="updateTaskDue('${t.id}',this.value)">
         </div>
+        <div class="prog-wrap">
+          <select class="prog-sel prog-${prog}" onchange="updateTaskProgress('${t.id}',this.value)">
+            <option value="not-started" ${prog==='not-started'?'selected':''}>Not Started</option>
+            <option value="in-progress" ${prog==='in-progress'?'selected':''}>In Progress</option>
+            <option value="completed" ${prog==='completed'?'selected':''}>Completed</option>
+          </select>
+        </div>
       </div>
     </div>
     <button class="task-del" onclick="removeTask('${t.id}')" title="Remove">×</button>
+  </div>`
+}
+
+// ── MEETING HTML ───────────────────────────────────────
+function meetingHTML(mt){
+  return `<div class="meeting-item" data-mid="${mt.id}">
+    <div class="meeting-ico">🤝</div>
+    <div class="meeting-info">
+      <input class="meeting-title-inp" value="${esc(mt.title)}" placeholder="Meeting title"
+        onblur="updateMeetingTitle('${mt.id}',this.value)">
+      <input type="date" class="meeting-date-inp" value="${mt.date||''}"
+        onchange="updateMeetingDate('${mt.id}',this.value)" title="Meeting date">
+    </div>
+    <button class="meeting-del" onclick="removeMeeting('${mt.id}')" title="Remove">×</button>
   </div>`
 }
 
@@ -797,11 +925,19 @@ function linkHTML(l){
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December']
 
+function setCalFilter(f){calFilter=f;renderMain()}
+
 function renderCalendar(p,m){
-  const calModeToggle=`<div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
+  const calModeToggle=`<div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
     <div class="view-toggle">
       <button class="vt-btn ${calMode==='month'?'active':''}" onclick="setCalMode('month')">Month</button>
       <button class="vt-btn ${calMode==='6month'?'active':''}" onclick="setCalMode('6month')">6 Months</button>
+    </div>
+    <div class="cal-filter-row" style="margin-bottom:0">
+      <span class="cal-filter-lbl">Show:</span>
+      <button class="cal-filt-btn ${calFilter==='all'?'on':''}" onclick="setCalFilter('all')">All</button>
+      <button class="cal-filt-btn ${calFilter==='tasks'?'on':''}" onclick="setCalFilter('tasks')">Tasks</button>
+      <button class="cal-filt-btn ${calFilter==='meetings'?'on':''}" onclick="setCalFilter('meetings')">Meetings</button>
     </div>
   </div>`
 
@@ -817,26 +953,42 @@ function renderMonthView(p,m){
   const daysInMonth=new Date(year,mon+1,0).getDate()
   const today=todayIso()
 
-  // Build task map: date → [{task, color}]
+  // Build task map: date → [{t, color, isSpan, prog}]
   const taskMap={}
-  p.tasks.forEach(t=>{
-    if(!t.dueDate)return
-    const key=t.dueDate
-    if(!taskMap[key])taskMap[key]=[]
-    taskMap[key].push({t,color:m.color,p})
-    // Also mark span days
-    if(t.startDate&&t.startDate<t.dueDate){
-      let cur=new Date(t.startDate+'T00:00:00')
-      const end=new Date(t.dueDate+'T00:00:00')
-      cur.setDate(cur.getDate()+1)
-      while(cur<end){
-        const k=cur.toISOString().slice(0,10)
-        if(!taskMap[k])taskMap[k]=[]
-        taskMap[k].push({t,color:m.color+'88',p,isSpan:true})
+  if(calFilter!=='meetings'){
+    p.tasks.forEach(t=>{
+      if(!t.dueDate)return
+      const prog=t.progress||'not-started'
+      // Color by progress: gray-tinted for not started, member color for in-progress, green for done
+      let chipColor=prog==='completed'?'#3DAD76':m.color
+      if(prog==='not-started')chipColor=m.color+'88'
+      const key=t.dueDate
+      if(!taskMap[key])taskMap[key]=[]
+      taskMap[key].push({t,color:chipColor,p,prog})
+      // Span days
+      if(t.startDate&&t.startDate<t.dueDate){
+        let cur=new Date(t.startDate+'T00:00:00')
+        const end=new Date(t.dueDate+'T00:00:00')
         cur.setDate(cur.getDate()+1)
+        while(cur<end){
+          const k=cur.toISOString().slice(0,10)
+          if(!taskMap[k])taskMap[k]=[]
+          taskMap[k].push({t,color:chipColor+'66',p,isSpan:true,prog})
+          cur.setDate(cur.getDate()+1)
+        }
       }
-    }
-  })
+    })
+  }
+
+  // Build meeting map: date → [meeting]
+  const meetingMap={}
+  if(calFilter!=='tasks'){
+    ;(p.meetings||[]).forEach(mt=>{
+      if(!mt.date)return
+      if(!meetingMap[mt.date])meetingMap[mt.date]=[]
+      meetingMap[mt.date].push(mt)
+    })
+  }
 
   let h=`<div class="cal-nav">
     <div class="cal-nav-title">${MONTHS[mon]} ${year}</div>
@@ -848,33 +1000,36 @@ function renderMonthView(p,m){
   </div>
   <div class="cal-month">`
 
-  // Day headers
   DAYS.forEach(d=>{h+=`<div class="cal-dow">${d}</div>`})
-
-  // Empty cells before first day
   for(let i=0;i<firstDay;i++)h+=`<div class="cal-day other-month"></div>`
 
-  // Days
   for(let d=1;d<=daysInMonth;d++){
     const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const isToday=iso===today
     const tasks=taskMap[iso]||[]
-    const shown=tasks.slice(0,3)
-    const more=tasks.length-3
+    const meetings=meetingMap[iso]||[]
+    const allItems=[
+      ...meetings.map(mt=>({isMeeting:true,mt})),
+      ...tasks.map(({t,color,isSpan,prog})=>({isMeeting:false,t,color,isSpan,prog}))
+    ]
+    const shown=allItems.slice(0,3)
+    const more=allItems.length-3
 
     h+=`<div class="cal-day ${isToday?'today':''}" onclick="calDayClick('${iso}')">
       <div class="cal-day-num">${d}</div>
-      <div class="cal-chips">${shown.map(({t,color,isSpan})=>`
-        <div class="cal-chip" style="background:${color}" title="${esc(t.text)}"
-          onclick="event.stopPropagation();goProject('${p.id}')">
-          ${isSpan?'—':''} ${esc(t.text.slice(0,22))}
-        </div>`).join('')}</div>
+      <div class="cal-chips">${shown.map(item=>item.isMeeting
+        ?`<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)}"
+            onclick="event.stopPropagation()">🤝 ${esc(item.mt.title.slice(0,18))}</div>`
+        :`<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)}"
+            onclick="event.stopPropagation();goProject('${p.id}')">
+            ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,22))}
+          </div>`
+      ).join('')}</div>
       ${more>0?`<div class="cal-more">+${more} more</div>`:''}
       <span class="cal-add-hint">＋</span>
     </div>`
   }
 
-  // Fill last row
   const totalCells=firstDay+daysInMonth
   const remainder=totalCells%7===0?0:7-(totalCells%7)
   for(let i=0;i<remainder;i++)h+=`<div class="cal-day other-month"></div>`
@@ -885,14 +1040,22 @@ function renderMonthView(p,m){
 
 function render6Month(p,m){
   const taskDates=new Set()
-  p.tasks.forEach(t=>{
-    if(t.dueDate)taskDates.add(t.dueDate)
-    if(t.startDate&&t.dueDate){
-      let cur=new Date(t.startDate+'T00:00:00')
-      const end=new Date(t.dueDate+'T00:00:00')
-      while(cur<=end){taskDates.add(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1)}
-    }
-  })
+  const meetingDates=new Set()
+
+  if(calFilter!=='meetings'){
+    p.tasks.forEach(t=>{
+      if(t.dueDate)taskDates.add(t.dueDate)
+      if(t.startDate&&t.dueDate){
+        let cur=new Date(t.startDate+'T00:00:00')
+        const end=new Date(t.dueDate+'T00:00:00')
+        while(cur<=end){taskDates.add(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1)}
+      }
+    })
+  }
+
+  if(calFilter!=='tasks'){
+    ;(p.meetings||[]).forEach(mt=>{if(mt.date)meetingDates.add(mt.date)})
+  }
 
   const today=todayIso()
   let h=`<div class="six-month-grid">`
@@ -910,9 +1073,13 @@ function render6Month(p,m){
     for(let day=1;day<=daysInMonth;day++){
       const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
       const hasTasks=taskDates.has(iso)
+      const hasMeeting=meetingDates.has(iso)
       const isToday=iso===today
-      h+=`<div class="mini-day ${isToday?'today-mini':''} ${hasTasks&&!isToday?'has-tasks':''}"
-        onclick="goMonth('${iso}')" title="${iso}">${day}</div>`
+      let cls='mini-day'
+      if(isToday)cls+=' today-mini'
+      else if(hasMeeting)cls+=' has-meeting'
+      else if(hasTasks)cls+=' has-tasks'
+      h+=`<div class="${cls}" onclick="goMonth('${iso}')" title="${iso}">${day}</div>`
     }
     h+=`</div></div>`
   }
@@ -1169,7 +1336,7 @@ function doAddTask(){
   const start=document.getElementById('newTStart')?.value||''
   const due=document.getElementById('newTDue')?.value||''
   const f=sel();if(!f)return
-  f.p.tasks.push({id:uid(),text:txt,startDate:start,dueDate:due,done:false})
+  f.p.tasks.push({id:uid(),text:txt,startDate:start,dueDate:due,done:false,progress:'not-started'})
   save();renderMain()
   setTimeout(()=>{const el=document.getElementById('newTText');if(el)el.focus()},30)
 }
@@ -1177,7 +1344,7 @@ function doAddTask(){
 function toggleTask(tid,checked){
   const f=sel();if(!f)return
   const t=f.p.tasks.find(t=>t.id===tid)
-  if(t){t.done=checked;save();renderMain()}
+  if(t){t.done=checked;t.progress=checked?'completed':'not-started';save();renderMain()}
 }
 
 function updateTaskTxt(tid,v){const f=sel();if(!f)return;const t=f.p.tasks.find(t=>t.id===tid);if(t&&v.trim()){t.text=v.trim();save()}}
@@ -1217,6 +1384,67 @@ function doAddLink(){
   f.p.links.push({id:uid(),label,url});save();renderMain()
 }
 function removeLink(lid){const f=sel();if(!f)return;f.p.links=f.p.links.filter(l=>l.id!==lid);save();renderMain()}
+
+// ══════════════════════════════════════════════════════
+//  SUMMARY CRUD
+// ══════════════════════════════════════════════════════
+function updateSummary(v){const f=sel();if(!f)return;f.p.summary=v;save()}
+function updateProjStart(v){const f=sel();if(!f)return;f.p.startDate=v;save()}
+function updateProjEnd(v){const f=sel();if(!f)return;f.p.endDate=v;save()}
+
+// ══════════════════════════════════════════════════════
+//  MEETING CRUD
+// ══════════════════════════════════════════════════════
+function doAddMeeting(){
+  const title=document.getElementById('newMTitle')?.value.trim()
+  const date=document.getElementById('newMDate')?.value||''
+  if(!title)return
+  const f=sel();if(!f)return
+  if(!f.p.meetings)f.p.meetings=[]
+  f.p.meetings.push({id:uid(),title,date})
+  save();renderMain()
+  setTimeout(()=>{const el=document.getElementById('newMTitle');if(el){el.value='';el.focus()}},30)
+}
+
+function removeMeeting(mid){
+  const f=sel();if(!f)return
+  f.p.meetings=f.p.meetings.filter(mt=>mt.id!==mid)
+  save();renderMain()
+}
+
+function updateMeetingTitle(mid,v){
+  const f=sel();if(!f)return
+  const mt=f.p.meetings?.find(mt=>mt.id===mid)
+  if(mt){mt.title=v||'Meeting';save()}
+}
+
+function updateMeetingDate(mid,v){
+  const f=sel();if(!f)return
+  const mt=f.p.meetings?.find(mt=>mt.id===mid)
+  if(mt){mt.date=v;save()}
+}
+
+// ══════════════════════════════════════════════════════
+//  TASK PROGRESS CRUD
+// ══════════════════════════════════════════════════════
+function updateTaskProgress(tid,v){
+  const f=sel();if(!f)return
+  const t=f.p.tasks.find(t=>t.id===tid)
+  if(!t)return
+  t.progress=v
+  t.done=(v==='completed')
+  save()
+  // Update the task item in-place without full re-render for snappy UX
+  const item=document.querySelector(`.task-item[data-tid="${tid}"]`)
+  if(item){
+    const chk=item.querySelector('.task-chk')
+    const txt=item.querySelector('.task-txt')
+    const sel_el=item.querySelector('.prog-sel')
+    if(chk)chk.checked=(v==='completed')
+    if(txt){txt.className='task-txt'+(v==='completed'?' done':'')}
+    if(sel_el)sel_el.className='prog-sel prog-'+v
+  }
+}
 
 // ══════════════════════════════════════════════════════
 //  CLAUDE SYNC
