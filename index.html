@@ -247,6 +247,31 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .sr-snippet mark{background:#FFE566;border-radius:2px;padding:0 1px}
 .search-empty{padding:24px;text-align:center;color:var(--tm);font-size:13px}
 
+/* ── LOCK SCREEN ─────────────────────────────────────── */
+.lock-screen{position:fixed;inset:0;background:var(--sb);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:0}
+.lock-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:40px 36px;width:340px;max-width:90vw;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 24px 80px rgba(0,0,0,.4)}
+.lock-logo{font-size:22px;font-weight:700;color:var(--sb-tb);letter-spacing:-.4px}
+.lock-logo em{color:var(--acc);font-style:normal}
+.lock-icon{font-size:36px;margin:4px 0}
+.lock-title{font-size:18px;font-weight:700;color:var(--sb-tb);text-align:center}
+.lock-sub{font-size:13px;color:var(--sb-t);text-align:center;margin-top:-8px}
+.lock-input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:12px 16px;font-size:14px;color:var(--sb-tb);font-family:inherit;outline:none;text-align:center;letter-spacing:.1em;transition:border-color .15s}
+.lock-input::placeholder{color:rgba(255,255,255,.25);letter-spacing:0}
+.lock-input:focus{border-color:var(--acc);background:rgba(255,255,255,.12)}
+.lock-btn{width:100%;background:var(--acc);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .14s}
+.lock-btn:hover{background:var(--acc2)}
+.lock-err{font-size:12px;color:#F07070;text-align:center;min-height:18px;transition:opacity .2s}
+.lock-err.hidden{opacity:0}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.lock-shake{animation:shake .35s ease}
+
+/* ── SIDEBAR ACTION BUTTONS ─────────────────────────── */
+.sb-actions{display:flex;gap:1px;opacity:0;transition:opacity .15s;flex-shrink:0;margin-right:2px}
+.member-row:hover .sb-actions,.brand-row:hover .sb-actions{opacity:1}
+.sb-act-btn{background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:4px;font-size:11px;color:var(--sb-t);transition:all .12s;line-height:1}
+.sb-act-btn:hover{background:rgba(255,255,255,.12);color:var(--sb-tb)}
+.sb-act-btn.del:hover{color:#F07070;background:rgba(240,112,112,.15)}
+
 /* ── MODAL ───────────────────────────────────────────── */
 .modal-ov{position:fixed;inset:0;background:rgba(15,18,35,.45);display:flex;align-items:center;justify-content:center;z-index:400;backdrop-filter:blur(2px)}
 .modal-box{background:#fff;border-radius:14px;padding:24px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.22)}
@@ -332,6 +357,20 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="modalOk" onclick="modalSubmit()">Add</button>
     </div>
+  </div>
+</div>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-logo">Studio<em>.</em></div>
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">Welcome back</div>
+    <div class="lock-sub">Enter your password to continue</div>
+    <input class="lock-input" type="password" id="lockInput" placeholder="Password"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <div class="lock-err hidden" id="lockErr">Incorrect password — try again</div>
+    <button class="lock-btn" onclick="checkPassword()">Unlock Studio</button>
   </div>
 </div>
 
@@ -506,10 +545,14 @@ function renderSidebar(){
 
 function renderMember(m){
   const open=openMembers.has(m.id)
-  let h=`<div class="member-row" onclick="toggleMember('${m.id}')">
-    <div class="m-dot" style="background:${m.color}"></div>
-    <span class="m-lbl">${esc(m.name)}</span>
-    <span class="chev ${open?'open':''}">▶</span>
+  let h=`<div class="member-row">
+    <div class="m-dot" style="background:${m.color}" onclick="toggleMember('${m.id}')"></div>
+    <span class="m-lbl" onclick="toggleMember('${m.id}')">${esc(m.name)}</span>
+    <div class="sb-actions">
+      <button class="sb-act-btn" title="Edit" onclick="openModal('editMember','${m.id}');event.stopPropagation()">✏</button>
+      ${!m.isMe?`<button class="sb-act-btn del" title="Delete" onclick="deleteMember('${m.id}');event.stopPropagation()">✕</button>`:''}
+    </div>
+    <span class="chev ${open?'open':''}" onclick="toggleMember('${m.id}')">▶</span>
   </div>
   <div class="brand-list ${open?'open':''}">`
   m.brands.forEach(b=>{h+=renderBrand(b)})
@@ -520,9 +563,13 @@ function renderMember(m){
 function renderBrand(b){
   const open=openBrands.has(b.id)
   const visible=b.projects.filter(p=>state.showArchived||p.status!=='archived')
-  let h=`<div class="brand-row" onclick="toggleBrand('${b.id}')">
-    <span class="chev ${open?'open':''}">▶</span>
-    <span class="b-lbl">${esc(b.name)}</span>
+  let h=`<div class="brand-row">
+    <span class="chev ${open?'open':''}" onclick="toggleBrand('${b.id}')">▶</span>
+    <span class="b-lbl" onclick="toggleBrand('${b.id}')">${esc(b.name)}</span>
+    <div class="sb-actions">
+      <button class="sb-act-btn" title="Edit" onclick="openModal('editBrand','${b.id}');event.stopPropagation()">✏</button>
+      <button class="sb-act-btn del" title="Delete" onclick="deleteBrand('${b.id}');event.stopPropagation()">✕</button>
+    </div>
   </div>
   <div class="proj-list ${open?'open':''}">`
   visible.forEach(p=>{
@@ -1225,15 +1272,22 @@ function onDrop(e){
 // ══════════════════════════════════════════════════════
 function openModal(type,ctx){
   modalType=type;modalCtx=ctx
-  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date'}
+  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date',editMember:'Edit team member',editBrand:'Edit brand / client'}
   document.getElementById('modalTtl').textContent=titles[type]||'Add'
-  document.getElementById('modalOk').textContent='Add'
+  document.getElementById('modalOk').textContent=(type.startsWith('edit'))?'Save':'Add'
 
   let fields=''
   if(type==='member'){
     fields=`<div class="field"><label>Name</label><input id="mf1" placeholder="e.g. Alex" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  } else if(type==='editMember'){
+    const m=state.members.find(m=>m.id===ctx);if(!m)return
+    fields=`<div class="field"><label>Name</label><input id="mf1" value="${esc(m.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
+      <div class="field"><label>Color</label><input type="color" id="mf2" value="${m.color}" style="width:100%;height:40px;padding:2px;border:1px solid var(--bdr);border-radius:var(--rs);cursor:pointer"></div>`
   } else if(type==='brand'){
     fields=`<div class="field"><label>Brand / Client Name</label><input id="mf1" placeholder="e.g. Nike" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  } else if(type==='editBrand'){
+    const fb=findBrand(ctx);if(!fb)return
+    fields=`<div class="field"><label>Brand / Client Name</label><input id="mf1" value="${esc(fb.b.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='project'){
     fields=`<div class="field"><label>Project Name</label><input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='quickTask'){
@@ -1258,10 +1312,22 @@ function modalSubmit(){
     state.members.push(mkMember(name,color,[]))
     save();closeModal();render()
 
+  } else if(modalType==='editMember'){
+    const m=state.members.find(m=>m.id===modalCtx);if(!m)return
+    if(name)m.name=name
+    const color=document.getElementById('mf2')?.value
+    if(color)m.color=color
+    save();closeModal();render()
+
   } else if(modalType==='brand'){
     const m=state.members.find(m=>m.id===modalCtx);if(!m)return
     const b=mkBrand(name,[]);m.brands.push(b)
     openMembers.add(m.id);openBrands.add(b.id)
+    save();closeModal();render()
+
+  } else if(modalType==='editBrand'){
+    const fb=findBrand(modalCtx);if(!fb)return
+    if(name)fb.b.name=name
     save();closeModal();render()
 
   } else if(modalType==='project'){
@@ -1278,6 +1344,30 @@ function modalSubmit(){
     save();closeModal()
     viewMode='detail';renderMain()
   }
+}
+
+// ══════════════════════════════════════════════════════
+//  DELETE HELPERS
+// ══════════════════════════════════════════════════════
+function deleteMember(id){
+  const m=state.members.find(m=>m.id===id);if(!m)return
+  const projectCount=m.brands.reduce((n,b)=>n+b.projects.length,0)
+  const warning=projectCount>0?` This will also delete ${m.brands.length} brand(s) and ${projectCount} project(s).`:''
+  if(!confirm(`Delete "${m.name}"?${warning} This cannot be undone.`))return
+  state.members=state.members.filter(m=>m.id!==id)
+  // Clear selection if the selected project belonged to this member
+  if(selId){const f=findProject(selId);if(!f)selId=null}
+  save();render()
+}
+
+function deleteBrand(id){
+  const fb=findBrand(id);if(!fb)return
+  const count=fb.b.projects.length
+  const warning=count>0?` This will also delete ${count} project(s).`:''
+  if(!confirm(`Delete "${fb.b.name}"?${warning} This cannot be undone.`))return
+  fb.m.brands=fb.m.brands.filter(b=>b.id!==id)
+  if(selId){const f=findProject(selId);if(!f)selId=null}
+  save();render()
 }
 
 // ══════════════════════════════════════════════════════
@@ -1312,7 +1402,45 @@ async function init() {
   render()
 }
 
-init()
+// ══════════════════════════════════════════════════════
+//  PASSWORD PROTECTION
+// ══════════════════════════════════════════════════════
+const PWD_HASH = '7a092f801daaa8f90ff8449431dd2509b6d0365b18e32fd82b499a6a8d60310e'
+const AUTH_KEY = 'studio_auth_v2'
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
+}
+
+async function checkPassword() {
+  const input = document.getElementById('lockInput')
+  const err = document.getElementById('lockErr')
+  const hash = await sha256(input.value)
+  if (hash === PWD_HASH) {
+    localStorage.setItem(AUTH_KEY, PWD_HASH)
+    document.getElementById('lockScreen').style.display = 'none'
+    init()
+  } else {
+    err.classList.remove('hidden')
+    input.value = ''
+    input.classList.add('lock-shake')
+    setTimeout(() => { input.classList.remove('lock-shake'); input.focus() }, 400)
+  }
+}
+
+async function checkAuth() {
+  const stored = localStorage.getItem(AUTH_KEY)
+  if (stored === PWD_HASH) {
+    document.getElementById('lockScreen').style.display = 'none'
+    init()
+  } else {
+    document.getElementById('lockScreen').style.display = 'flex'
+    setTimeout(() => document.getElementById('lockInput').focus(), 100)
+  }
+}
+
+checkAuth()
 </script>
 </body>
 </html>
