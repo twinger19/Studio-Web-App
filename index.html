@@ -65,6 +65,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sb-foot{padding:10px 16px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;gap:10px;flex-direction:column}
 .sb-foot-btn{font-size:11px;color:var(--sb-t);opacity:.45;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;padding:0;transition:opacity .15s}
 .sb-foot-btn:hover{opacity:.85}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#3DAD76;flex-shrink:0;transition:background .4s;box-shadow:0 0 0 0 transparent}
+.sync-dot.syncing{background:var(--warn);box-shadow:0 0 5px var(--warn)}
+.sync-dot.error{background:var(--red)}
 
 /* ── MAIN ────────────────────────────────────────────── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -352,7 +355,7 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
       <span id="archIco">📦</span><span id="archLbl">Show archived</span>
     </button>
     <button class="sb-foot-btn" onclick="showView('sync')">
-      <span>🤖</span><span>Claude sync</span>
+      <span id="syncDot" class="sync-dot"></span><span>Cloud sync &amp; backup</span>
     </button>
   </div>
 </nav>
@@ -513,11 +516,64 @@ const IDB = {
   }
 }
 
+// ══════════════════════════════════════════════════════
+//  SUPABASE CLOUD SYNC
+// ══════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://gzbyncxpmwtpwaegfrnx.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_RYHhWPfpm-ps5TSF3R_qDQ_YEcxilIq'
+const SB_TABLE = 'studio_state'
+const SB_ROW = 'main'
+let _cloudTimer = null
+
+function setSyncDot(status){
+  const dot = document.getElementById('syncDot')
+  if(dot) dot.className = 'sync-dot' + (status !== 'ok' ? ' ' + status : '')
+}
+
+async function cloudLoad(){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${SB_TABLE}?id=eq.${SB_ROW}&select=data`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  })
+  if(!res.ok) throw new Error('cloud load failed: ' + res.status)
+  const rows = await res.json()
+  return rows[0]?.data || null
+}
+
+async function cloudSave(data){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${SB_TABLE}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({ id: SB_ROW, data, updated_at: new Date().toISOString() })
+  })
+  if(!res.ok) throw new Error('cloud save failed: ' + res.status)
+}
+
+function debouncedCloudSave(){
+  setSyncDot('syncing')
+  clearTimeout(_cloudTimer)
+  _cloudTimer = setTimeout(async () => {
+    try {
+      await cloudSave(state)
+      setSyncDot('ok')
+    } catch(e) {
+      console.warn('Cloud save failed:', e)
+      setSyncDot('error')
+    }
+  }, 1500)
+}
+
 function save() {
   // Primary: IndexedDB — survives browser restarts reliably
   IDB.set('state', state).catch(() => {})
   // Belt-and-suspenders: also write to localStorage as a backup
   try { localStorage.setItem('studio_v2_bk', JSON.stringify(state)) } catch {}
+  // Cloud sync — debounced so rapid edits don't spam the API
+  debouncedCloudSave()
 }
 
 let selId=null          // selected project id
@@ -1088,81 +1144,26 @@ function render6Month(p,m){
 }
 
 // ══════════════════════════════════════════════════════
-//  CLAUDE SYNC PANEL
+//  CLOUD SYNC PANEL
 // ══════════════════════════════════════════════════════
 function renderSyncPanel(){
   return `<div class="sync-panel">
-    <h2>🤖 Claude Sync</h2>
-    <p>Studio uses a plain JSON file as its data format. Claude (via Cowork) can read and modify this file directly — then you import it back to see your changes. This is the fastest integration that works entirely offline with no server needed.</p>
+    <h2>☁️ Cloud Sync</h2>
+    <p>Your data saves automatically to the cloud every time you make a change — no manual action needed. You can open Studio from any browser, on any device, and your data will always be up to date.</p>
+    <p>The <strong>●</strong> dot in the bottom-left of the sidebar shows sync status: <span style="color:#3DAD76">●</span> green = saved, <span style="color:#D9934A">●</span> yellow = saving, <span style="color:#D95B5B">●</span> red = error.</p>
 
-    <p><strong>How it works:</strong><br>
-    1. Click <strong>Export JSON</strong> below — this saves <code>studio_data.json</code><br>
-    2. In this chat, say something like: <em>"Add a task 'Review fabric samples' to Pierre's Cole Haan Spring 2027 project, due May 15"</em><br>
-    3. Claude edits the file directly in your outputs folder<br>
-    4. Click <strong>Import JSON</strong> to reload with the changes</p>
-
-    <p><strong>Data schema — what Claude can read and write:</strong></p>
-    <pre class="sync-schema">{
-  "version": "2.0",
-  "members": [
-    {
-      "id": "abc123",
-      "name": "Pierre",
-      "color": "#E88B6D",
-      "isMe": false,
-      "brands": [
-        {
-          "id": "def456",
-          "name": "Cole Haan",
-          "projects": [
-            {
-              "id": "ghi789",
-              "name": "Cole Haan Spring 2027",
-              "status": "active",  // or "archived"
-              "tasks": [
-                {
-                  "id": "t001",
-                  "text": "Review line plan",
-                  "startDate": "2026-05-01",  // optional
-                  "dueDate": "2026-05-15",
-                  "done": false
-                }
-              ],
-              "notes": [
-                {
-                  "id": "n001",
-                  "title": "Kickoff Meeting",
-                  "body": "&lt;p&gt;HTML content here&lt;/p&gt;",  // supports &lt;b&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;mark&gt;
-                  "date": "Apr 11, 2026",
-                  "open": false
-                }
-              ],
-              "links": [
-                {
-                  "id": "l001",
-                  "label": "Line Plan",
-                  "url": "https://..."
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}</pre>
-
+    <h3 style="margin-top:24px;font-size:14px;font-weight:600;margin-bottom:6px">📦 Backup & Restore</h3>
+    <p>Download a local copy of all your data as a safety backup, or restore from a previous backup file.</p>
     <div class="sync-actions">
-      <button class="btn btn-primary" onclick="exportJSON()">⬇ Export JSON</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('fileInput').click()">⬆ Import JSON</button>
-      <button class="btn btn-ghost" onclick="copyJSON()">📋 Copy to clipboard</button>
+      <button class="btn btn-primary" onclick="exportJSON()">⬇ Download Backup</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('fileInput').click()">⬆ Restore from Backup</button>
     </div>
 
     <div class="drop-zone" id="dropZone"
       ondragover="event.preventDefault();this.classList.add('drag-over')"
       ondragleave="this.classList.remove('drag-over')"
       ondrop="onDrop(event)">
-      Or drag &amp; drop a <code>studio_data.json</code> file here to import
+      Or drag &amp; drop a backup <code>.json</code> file here to restore
     </div>
   </div>`
 }
@@ -1609,23 +1610,29 @@ function render(){renderSidebar();renderMain()}
 // ── INIT: load from IndexedDB, fall back to localStorage ──
 async function init() {
   try {
-    let saved = await IDB.get('state')
+    // Try cloud first — gives cross-device sync
+    let saved = await cloudLoad()
+    // Fall back to local IndexedDB (works offline)
+    if (!saved) saved = await IDB.get('state')
+    // Last resort: localStorage backup
     if (!saved) {
-      // Try localStorage backups (old versions or export/import remnants)
       const ls = localStorage.getItem('studio_v2_bk') || localStorage.getItem('studio_v2')
       if (ls) saved = JSON.parse(ls)
     }
     if (saved && saved.members) {
       state = migrate(saved)
-      // Re-sync openMembers to match loaded state
       openMembers = new Set(state.members.filter(m => m.isMe).map(m => m.id))
     }
   } catch (e) {
-    // Last resort: try localStorage
+    // Cloud unavailable (offline?) — fall back to local storage
     try {
-      const ls = localStorage.getItem('studio_v2_bk') || localStorage.getItem('studio_v2')
-      if (ls) {
-        state = migrate(JSON.parse(ls))
+      let saved = await IDB.get('state')
+      if (!saved) {
+        const ls = localStorage.getItem('studio_v2_bk') || localStorage.getItem('studio_v2')
+        if (ls) saved = JSON.parse(ls)
+      }
+      if (saved && saved.members) {
+        state = migrate(saved)
         openMembers = new Set(state.members.filter(m => m.isMe).map(m => m.id))
       }
     } catch {}
