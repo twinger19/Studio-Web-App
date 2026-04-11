@@ -68,6 +68,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#3DAD76;flex-shrink:0;transition:background .4s;box-shadow:0 0 0 0 transparent}
 .sync-dot.syncing{background:var(--warn);box-shadow:0 0 5px var(--warn)}
 .sync-dot.error{background:var(--red)}
+/* ── DRAG & DROP ─────────────────────────────────────── */
+.member-row[draggable],.brand-row[draggable],.proj-row[draggable]{cursor:grab}
+.member-row[draggable]:active,.brand-row[draggable]:active,.proj-row[draggable]:active{cursor:grabbing}
+.sb-drag-over{background:rgba(99,118,218,.22)!important;outline:2px dashed var(--acc);outline-offset:-2px;border-radius:4px}
+.sb-dragging{opacity:.35}
+/* ── GLOBAL CALENDAR ─────────────────────────────────── */
+.gcal-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center}
+.gcal-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--tm)}
+.gcal-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
 /* ── MAIN ────────────────────────────────────────────── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -351,6 +360,9 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
   <div class="sb-head"><div class="logo">Studio<em>.</em></div></div>
   <div class="sb-scroll" id="sbTree"></div>
   <div class="sb-foot">
+    <button class="sb-foot-btn" onclick="showView('allcal')">
+      <span>📅</span><span>All Teams Calendar</span>
+    </button>
     <button class="sb-foot-btn" onclick="toggleArchived()">
       <span id="archIco">📦</span><span id="archLbl">Show archived</span>
     </button>
@@ -577,7 +589,8 @@ function save() {
 }
 
 let selId=null          // selected project id
-let viewMode='detail'   // 'detail'|'calendar'|'sync'
+let viewMode='detail'   // 'detail'|'calendar'|'sync'|'allcal'
+let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
 let calFilter='all'     // 'all'|'tasks'|'meetings'
@@ -623,6 +636,48 @@ function computeAlerts(){
 }
 
 // ══════════════════════════════════════════════════════
+//  SIDEBAR DRAG-TO-REORDER
+// ══════════════════════════════════════════════════════
+function sbDragStart(e,type,id,parentId){
+  _drag={type,id,parentId}
+  e.dataTransfer.effectAllowed='move'
+  e.currentTarget.classList.add('sb-dragging')
+}
+function sbDragEnd(e){
+  e.currentTarget.classList.remove('sb-dragging')
+  document.querySelectorAll('.sb-drag-over').forEach(el=>el.classList.remove('sb-drag-over'))
+  _drag=null
+}
+function sbDragOver(e,type){
+  if(!_drag||_drag.type!==type)return
+  e.preventDefault()
+  e.dataTransfer.dropEffect='move'
+  document.querySelectorAll('.sb-drag-over').forEach(el=>el.classList.remove('sb-drag-over'))
+  e.currentTarget.classList.add('sb-drag-over')
+}
+function sbDrop(e,type,id,parentId){
+  e.preventDefault()
+  e.currentTarget.classList.remove('sb-drag-over')
+  if(!_drag||_drag.type!==type||_drag.id===id)return
+  if(type==='member'){
+    const arr=state.members
+    const fi=arr.findIndex(m=>m.id===_drag.id),ti=arr.findIndex(m=>m.id===id)
+    arr.splice(ti,0,arr.splice(fi,1)[0])
+  } else if(type==='brand'){
+    const mem=state.members.find(m=>m.id===parentId);if(!mem)return
+    const arr=mem.brands
+    const fi=arr.findIndex(b=>b.id===_drag.id),ti=arr.findIndex(b=>b.id===id)
+    arr.splice(ti,0,arr.splice(fi,1)[0])
+  } else if(type==='project'){
+    const fb=findBrand(parentId);if(!fb)return
+    const arr=fb.b.projects
+    const fi=arr.findIndex(p=>p.id===_drag.id),ti=arr.findIndex(p=>p.id===id)
+    arr.splice(ti,0,arr.splice(fi,1)[0])
+  }
+  save();renderSidebar()
+}
+
+// ══════════════════════════════════════════════════════
 //  SIDEBAR RENDER
 // ══════════════════════════════════════════════════════
 function renderSidebar(){
@@ -662,7 +717,11 @@ function renderSidebar(){
 
 function renderMember(m){
   const open=openMembers.has(m.id)
-  let h=`<div class="member-row">
+  let h=`<div class="member-row" draggable="true"
+    ondragstart="sbDragStart(event,'member','${m.id}',null)"
+    ondragend="sbDragEnd(event)"
+    ondragover="sbDragOver(event,'member')"
+    ondrop="sbDrop(event,'member','${m.id}',null)">
     <div class="m-dot" style="background:${m.color}" onclick="toggleMember('${m.id}')"></div>
     <span class="m-lbl" onclick="toggleMember('${m.id}')">${esc(m.name)}</span>
     <div class="sb-actions">
@@ -672,15 +731,19 @@ function renderMember(m){
     <span class="chev ${open?'open':''}" onclick="toggleMember('${m.id}')">▶</span>
   </div>
   <div class="brand-list ${open?'open':''}">`
-  m.brands.forEach(b=>{h+=renderBrand(b)})
+  m.brands.forEach(b=>{h+=renderBrand(b,m.id)})
   h+=`<button class="sb-add lv1" onclick="openModal('brand','${m.id}')">＋ Add brand / client</button></div>`
   return h
 }
 
-function renderBrand(b){
+function renderBrand(b,memberId){
   const open=openBrands.has(b.id)
   const visible=b.projects.filter(p=>state.showArchived||p.status!=='archived')
-  let h=`<div class="brand-row">
+  let h=`<div class="brand-row" draggable="true"
+    ondragstart="sbDragStart(event,'brand','${b.id}','${memberId}')"
+    ondragend="sbDragEnd(event)"
+    ondragover="sbDragOver(event,'brand')"
+    ondrop="sbDrop(event,'brand','${b.id}','${memberId}')">
     <span class="chev ${open?'open':''}" onclick="toggleBrand('${b.id}')">▶</span>
     <span class="b-lbl" onclick="toggleBrand('${b.id}')">${esc(b.name)}</span>
     <div class="sb-actions">
@@ -691,7 +754,13 @@ function renderBrand(b){
   <div class="proj-list ${open?'open':''}">`
   visible.forEach(p=>{
     const active=p.id===selId
-    h+=`<div class="proj-row ${active?'active':''} ${p.status==='archived'?'p-arch':''}" onclick="goProject('${p.id}')">
+    h+=`<div class="proj-row ${active?'active':''} ${p.status==='archived'?'p-arch':''}"
+      draggable="true"
+      ondragstart="sbDragStart(event,'project','${p.id}','${b.id}')"
+      ondragend="sbDragEnd(event)"
+      ondragover="sbDragOver(event,'project')"
+      ondrop="sbDrop(event,'project','${p.id}','${b.id}')"
+      onclick="goProject('${p.id}')">
       <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
     </div>`
   })
@@ -711,9 +780,17 @@ function renderMain(){
 
   if(viewMode==='sync'){
     vt.style.display='none'
-    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">Claude Sync</span>`
+    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">Cloud Sync &amp; Backup</span>`
     acts.innerHTML=''
     content.innerHTML=renderSyncPanel()
+    return
+  }
+
+  if(viewMode==='allcal'){
+    vt.style.display='none'
+    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">All Teams Calendar</span>`
+    acts.innerHTML=''
+    content.innerHTML=renderAllCalendar()
     return
   }
 
@@ -1141,6 +1218,140 @@ function render6Month(p,m){
   }
   h+=`</div>`
   return h
+}
+
+// ══════════════════════════════════════════════════════
+//  GLOBAL CALENDAR (all members/projects)
+// ══════════════════════════════════════════════════════
+function renderAllCalendar(){
+  // Collect all tasks and meetings across every active project
+  const taskMap={}, meetingMap={}
+  const memberColors={}
+  for(const m of state.members){
+    memberColors[m.id]=m.color
+    for(const b of m.brands){
+      for(const p of b.projects){
+        if(p.status==='archived')continue
+        if(calFilter!=='meetings'){
+          for(const t of p.tasks){
+            if(!t.dueDate)continue
+            const prog=t.progress||'not-started'
+            let chip=prog==='completed'?'#3DAD76':m.color
+            if(prog==='not-started')chip=m.color+'88'
+            if(!taskMap[t.dueDate])taskMap[t.dueDate]=[]
+            taskMap[t.dueDate].push({t,p,b,m,color:chip})
+            if(t.startDate&&t.startDate<t.dueDate){
+              let cur=new Date(t.startDate+'T00:00:00')
+              const end=new Date(t.dueDate+'T00:00:00')
+              cur.setDate(cur.getDate()+1)
+              while(cur<end){
+                const k=cur.toISOString().slice(0,10)
+                if(!taskMap[k])taskMap[k]=[]
+                taskMap[k].push({t,p,b,m,color:chip+'66',isSpan:true})
+                cur.setDate(cur.getDate()+1)
+              }
+            }
+          }
+        }
+        if(calFilter!=='tasks'){
+          for(const mt of p.meetings||[]){
+            if(!mt.date)continue
+            if(!meetingMap[mt.date])meetingMap[mt.date]=[]
+            meetingMap[mt.date].push({mt,p,b,m})
+          }
+        }
+      }
+    }
+  }
+
+  // Legend
+  const activeMembers=state.members.filter(m=>m.brands.some(b=>b.projects.some(p=>p.status!=='archived')))
+  const legend=activeMembers.map(m=>`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:${m.color}"></div>${esc(m.name)}</div>`).join('')
+  +`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:#9B6DE8"></div>Meetings</div>`
+
+  const year=calDate.getFullYear(),mon=calDate.getMonth()
+  const firstDay=new Date(year,mon,1).getDay()
+  const daysInMonth=new Date(year,mon+1,0).getDate()
+  const today=todayIso()
+
+  const filterRow=`<div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+    <div class="view-toggle">
+      <button class="vt-btn ${calMode==='month'?'active':''}" onclick="setCalMode('month')">Month</button>
+      <button class="vt-btn ${calMode==='6month'?'active':''}" onclick="setCalMode('6month')">6 Months</button>
+    </div>
+    <div class="cal-filter-row" style="margin-bottom:0">
+      <span class="cal-filter-lbl">Show:</span>
+      <button class="cal-filt-btn ${calFilter==='all'?'on':''}" onclick="setCalFilter('all')">All</button>
+      <button class="cal-filt-btn ${calFilter==='tasks'?'on':''}" onclick="setCalFilter('tasks')">Tasks</button>
+      <button class="cal-filt-btn ${calFilter==='meetings'?'on':''}" onclick="setCalFilter('meetings')">Meetings</button>
+    </div>
+  </div>
+  <div class="gcal-legend">${legend}</div>`
+
+  if(calMode==='6month'){
+    // 6-month overview across all projects
+    const taskDates=new Set(Object.keys(taskMap))
+    const meetDates=new Set(Object.keys(meetingMap))
+    let h=filterRow+`<div class="six-month-grid">`
+    for(let mo=0;mo<6;mo++){
+      const d=new Date(calDate.getFullYear(),calDate.getMonth()+mo,1)
+      const yr=d.getFullYear(),mn=d.getMonth()
+      const fd=d.getDay(),dim=new Date(yr,mn+1,0).getDate()
+      h+=`<div class="mini-month"><div class="mini-month-title">${MONTHS[mn].slice(0,3)} ${yr}</div><div class="mini-cal">`
+      DAYS.forEach(day=>{h+=`<div class="mini-dow">${day[0]}</div>`})
+      for(let i=0;i<fd;i++)h+=`<div class="mini-day other"></div>`
+      for(let day=1;day<=dim;day++){
+        const iso=`${yr}-${String(mn+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+        const isToday=iso===today
+        let cls='mini-day'
+        if(isToday)cls+=' today-mini'
+        else if(meetDates.has(iso))cls+=' has-meeting'
+        else if(taskDates.has(iso))cls+=' has-tasks'
+        h+=`<div class="${cls}" onclick="goMonth('${iso}')" title="${iso}">${day}</div>`
+      }
+      h+=`</div></div>`
+    }
+    return h+`</div>`
+  }
+
+  // Month view
+  let h=filterRow+`<div class="cal-nav">
+    <div class="cal-nav-title">${MONTHS[mon]} ${year}</div>
+    <div class="cal-nav-btns">
+      <button class="cal-nav-btn" onclick="calPrev()">← Prev</button>
+      <button class="cal-nav-btn" onclick="calToday()">Today</button>
+      <button class="cal-nav-btn" onclick="calNext()">Next →</button>
+    </div>
+  </div><div class="cal-month">`
+
+  DAYS.forEach(d=>{h+=`<div class="cal-dow">${d}</div>`})
+  for(let i=0;i<firstDay;i++)h+=`<div class="cal-day other-month"></div>`
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const isToday=iso===today
+    const tasks=taskMap[iso]||[]
+    const meets=meetingMap[iso]||[]
+    const all=[
+      ...meets.map(x=>({isMeeting:true,...x})),
+      ...tasks.map(x=>({isMeeting:false,...x}))
+    ]
+    const shown=all.slice(0,3),more=all.length-3
+    h+=`<div class="cal-day ${isToday?'today':''}" style="cursor:default">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-chips">${shown.map(item=>item.isMeeting
+        ?`<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)} — ${esc(item.p.name)}"
+            onclick="event.stopPropagation();goProject('${item.p.id}')">🤝 ${esc(item.mt.title.slice(0,16))}</div>`
+        :`<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)} — ${esc(item.p.name)}"
+            onclick="event.stopPropagation();goProject('${item.p.id}')">
+            ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,20))}
+          </div>`
+      ).join('')}</div>
+      ${more>0?`<div class="cal-more">+${more} more</div>`:''}
+    </div>`
+  }
+  const rem=(firstDay+daysInMonth)%7
+  for(let i=0;i<(rem?7-rem:0);i++)h+=`<div class="cal-day other-month"></div>`
+  return h+`</div>`
 }
 
 // ══════════════════════════════════════════════════════
