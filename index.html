@@ -195,6 +195,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── TASKS ───────────────────────────────────────────── */
 .task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr-l)}
 .task-item:last-of-type{border-bottom:none}
+.task-item[draggable]{cursor:grab}
+.task-item[draggable]:active{cursor:grabbing}
 .task-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--bdr);cursor:pointer;flex-shrink:0;margin-top:2px;appearance:none;-webkit-appearance:none;background:#fff;transition:all .14s;position:relative}
 .task-chk:checked{background:var(--ok);border-color:var(--ok)}
 .task-chk:checked::after{content:'';position:absolute;left:4px;top:1px;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg)}
@@ -219,9 +221,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .add-date-inp{font-size:12px;border:none;background:transparent;color:var(--tm);cursor:pointer;font-family:inherit;outline:none;flex-shrink:0}
 .done-toggle{font-size:11px;color:var(--tm);background:none;border:none;cursor:pointer;font-family:inherit;padding:6px 0 0;display:block;opacity:.65}
 .done-toggle:hover{opacity:1;color:var(--acc)}
+.proj-drag-over{background:rgba(99,118,218,.08)!important;outline:2px dashed rgba(99,118,218,.38);outline-offset:-4px;border-radius:12px}
+.proj-dragging{opacity:.45}
 
 /* ── NOTES / RICH TEXT ───────────────────────────────── */
 .note-card{border:1px solid var(--bdr);border-radius:14px;margin-bottom:12px;overflow:hidden;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);box-shadow:0 10px 24px rgba(26,28,46,.05)}
+.note-card[draggable]{cursor:grab}
+.note-card[draggable]:active{cursor:grabbing}
 .note-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,#f7f8fc 0%,#f1f4fa 100%);cursor:pointer;user-select:none}
 .note-head:hover{background:linear-gradient(180deg,#f2f5fb 0%,#ebeff8 100%)}
 .note-chev{font-size:8px;color:var(--tm);transition:transform .18s;flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(99,118,218,.1)}
@@ -253,6 +259,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rte-content li{margin-bottom:3px}
 .rte-content blockquote{margin:8px 0;padding:8px 12px;border-left:3px solid var(--acc);background:#F7F8FF;color:var(--tm)}
 .rte-content a{color:var(--acc);text-decoration:underline}
+.rte-content img{max-width:100%;height:auto;border-radius:8px;display:block;margin:10px 0}
 mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .add-note-btn{width:100%;text-align:left;background:linear-gradient(180deg,#fff 0%,#f8faff 100%);border:1px dashed #CBD2E5;border-radius:12px;padding:12px 14px;font-size:12px;color:var(--tm);cursor:pointer;font-family:inherit;transition:all .14s;margin-top:6px}
 .add-note-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-l);box-shadow:0 10px 18px rgba(99,118,218,.08)}
@@ -328,12 +335,13 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .search-results{overflow-y:auto;padding:8px}
 .search-result{padding:10px 12px;border-radius:var(--rs);cursor:pointer;transition:background .12s}
 .search-result:hover{background:var(--bg)}
-.sr-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.sr-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap}
 .sr-project{font-size:11px;font-weight:600;color:var(--acc)}
 .sr-title{font-size:13px;font-weight:500;color:var(--txt)}
 .sr-snippet{font-size:12px;color:var(--tm);line-height:1.4}
 .sr-snippet mark{background:#FFE566;border-radius:2px;padding:0 1px}
 .search-empty{padding:24px;text-align:center;color:var(--tm);font-size:13px}
+.sr-kind{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--bg);color:var(--tm);border:1px solid var(--bdr)}
 
 /* ── PROJECT SUMMARY ─────────────────────────────────── */
 .summary-ta{width:100%;border:1px solid var(--bdr);border-radius:var(--rs);padding:10px 12px;font-size:13px;font-family:inherit;color:var(--txt);outline:none;resize:vertical;min-height:64px;line-height:1.65;background:#fff;transition:border-color .15s}
@@ -368,6 +376,42 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .add-meeting-row{display:flex;gap:8px;align-items:center;padding:10px 0 0;border-top:1px dashed var(--bdr);margin-top:6px}
 .add-meeting-inp{flex:1;border:none;background:transparent;font-size:13px;color:var(--txt);font-family:inherit;outline:none;padding:0}
 .add-meeting-inp::placeholder{color:var(--bdr)}
+
+/* ── TRAVEL & LOGISTICS ─────────────────────────────── */
+.travel-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bdr-l);align-items:flex-start}
+.travel-item:last-of-type{border-bottom:none}
+.travel-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:999px;background:var(--acc-l);color:var(--acc);white-space:nowrap}
+.travel-main{flex:1;min-width:0}
+.travel-title{width:100%;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--txt);font-family:inherit;outline:none}
+.travel-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:5px;align-items:center}
+.travel-date{font-size:11px;color:var(--tm);border:none;background:transparent;outline:none;font-family:inherit}
+.travel-link{font-size:11px;color:var(--acc);text-decoration:none;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.travel-link:hover{text-decoration:underline}
+.travel-link-inp,.travel-type-sel{border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 10px;font-size:12px;font-family:inherit;color:var(--txt);outline:none;background:#fff}
+.travel-link-inp:focus,.travel-type-sel:focus{border-color:var(--acc)}
+.travel-del{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:16px;line-height:1;padding:1px 3px;opacity:0;transition:opacity .12s,color .12s;flex-shrink:0}
+.travel-item:hover .travel-del{opacity:1}
+.travel-del:hover{color:var(--red)}
+.add-travel-row{display:flex;gap:8px;align-items:center;padding:10px 0 0;border-top:1px dashed var(--bdr);margin-top:6px;flex-wrap:wrap}
+
+/* ── DASHBOARD FILTERS ──────────────────────────────── */
+.dash-filter-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.dash-filter-chips{display:flex;gap:8px;flex-wrap:wrap}
+.dash-filter-btn{font-size:11px;padding:5px 11px;border-radius:999px;border:1px solid var(--bdr);background:#fff;cursor:pointer;font-family:inherit;color:var(--tm);transition:all .14s}
+.dash-filter-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.dash-brand-select{border:1px solid var(--bdr);border-radius:999px;padding:6px 12px;font-size:11px;font-family:inherit;color:var(--txt);background:#fff;outline:none}
+
+/* ── GLOBAL TASKS ───────────────────────────────────── */
+.gtasks{display:flex;flex-direction:column;gap:14px}
+.gtask-card{background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s}
+.gtask-card:hover{transform:translateY(-1px);border-color:#D8DCEC;box-shadow:0 16px 28px rgba(26,28,46,.08)}
+.gtask-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.gtask-title{font-size:14px;font-weight:700;color:var(--txt)}
+.gtask-meta{font-size:12px;color:var(--tm);line-height:1.55}
+.gtask-due{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:999px}
+.gtask-due.overdue{background:#FFF0F0;color:var(--red)}
+.gtask-due.upcoming{background:#FFF4E6;color:var(--warn)}
+.gtask-due.nodate{background:var(--bg);color:var(--tm)}
 
 /* ── CALENDAR FILTER + MEETING CHIPS ────────────────── */
 .cal-filter-row{display:flex;align-items:center;gap:6px;margin-bottom:14px}
@@ -465,6 +509,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
   .dash-project{grid-template-columns:1fr}
   .dash-project-side{align-items:flex-start}
   .dash-project-track{width:100%}
+  .dash-filter-row{align-items:flex-start}
+  .dash-brand-select{width:100%}
 
   /* Project title */
   .proj-title-input{font-size:18px}
@@ -505,6 +551,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 
   /* Meetings */
   .add-meeting-row{flex-wrap:wrap}
+  .add-travel-row{flex-wrap:wrap}
+  .travel-link-inp,.travel-type-sel{width:100%!important;flex:none!important}
 
   /* Calendar month grid */
   .cal-month{gap:2px}
@@ -563,6 +611,9 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
     <button class="sb-foot-btn" onclick="showView('allcal')">
       <span>📅</span><span>All Teams Calendar</span>
     </button>
+    <button class="sb-foot-btn" onclick="showView('globaltasks')">
+      <span>☑️</span><span>My Global Tasks</span>
+    </button>
     <button class="sb-foot-btn" onclick="toggleArchived()">
       <span id="archIco">📦</span><span id="archLbl">Show archived</span>
     </button>
@@ -581,7 +632,7 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
       <!-- Search -->
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input class="search-input" placeholder="Search notes…" id="searchInput"
+        <input class="search-input" placeholder="Search projects, tasks, notes…" id="searchInput"
           onfocus="openSearch()" onkeydown="if(event.key==='Escape')closeSearch()">
       </div>
       <!-- View toggle (only shown when project selected) -->
@@ -606,7 +657,7 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
   <div class="search-box" onclick="event.stopPropagation()">
     <div class="search-box-input-wrap">
       <span class="search-box-ico">🔍</span>
-      <input class="search-box-inp" id="searchBoxInp" placeholder="Search across all notes…"
+      <input class="search-box-inp" id="searchBoxInp" placeholder="Search notes, tasks, links, summaries…"
         oninput="doSearch(this.value)" onkeydown="onSearchKey(event)">
     </div>
     <div id="searchResults" class="search-results"><div class="search-empty">Start typing to search all notes</div></div>
@@ -684,7 +735,7 @@ function addProjectRange(map,p,m,extra={}){
 //  DEFAULT DATA
 // ══════════════════════════════════════════════════════
 const COLORS=['#6376DA','#E88B6D','#6DB8E8','#9B6DE8','#50C08A','#E8CC5A','#E86D8B','#5AC8E8']
-function mkProject(name){return{id:uid(),name,status:'active',summary:'',startDate:'',endDate:'',tasks:[],notes:[],links:[],meetings:[]}}
+function mkProject(name){return{id:uid(),name,status:'active',summary:'',startDate:'',endDate:'',tasks:[],notes:[],links:[],meetings:[],travel:[]}}
 function mkBrand(name,projects=[]){return{id:uid(),name,projects}}
 function mkMember(name,color,brands=[],isMe=false){return{id:uid(),name,color,brands,isMe}}
 
@@ -712,6 +763,7 @@ function migrate(d){
     if(!('startDate'in p))p.startDate=''
     if(!('endDate'  in p))p.endDate=''
     if(!('meetings' in p))p.meetings=[]
+    if(!('travel'   in p))p.travel=[]
     // Tasks
     for(const t of p.tasks||[]){
       if('due'in t&&!('dueDate'in t)){t.dueDate=t.due;delete t.due}
@@ -861,12 +913,14 @@ function save() {
 }
 
 let selId=null          // selected project id
-let viewMode='home'     // 'home'|'detail'|'calendar'|'sync'|'allcal'
+let viewMode='home'     // 'home'|'detail'|'calendar'|'sync'|'allcal'|'globaltasks'
 let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
 let calFilter='all'     // 'all'|'tasks'|'meetings'
 let calOwnerFilter='all'
+let dashFilter='all'    // 'all'|'mine'|'critical'
+let dashBrandFilter='all'
 let showDone=false
 let openMembers=new Set(state.members.filter(m=>m.isMe).map(m=>m.id))
 let openBrands=new Set()
@@ -943,33 +997,85 @@ function sbDragEnd(e){
   document.querySelectorAll('.sb-drag-over').forEach(el=>el.classList.remove('sb-drag-over'))
   _drag=null
 }
-function sbDragOver(e,type){
-  if(!_drag||_drag.type!==type)return
+function canDropOn(accept){
+  if(!_drag)return false
+  return String(accept).split(',').map(s=>s.trim()).includes(_drag.type)
+}
+function sbDragOver(e,accept){
+  if(!canDropOn(accept))return
   e.preventDefault()
   e.dataTransfer.dropEffect='move'
   document.querySelectorAll('.sb-drag-over').forEach(el=>el.classList.remove('sb-drag-over'))
   e.currentTarget.classList.add('sb-drag-over')
 }
+function ensureMemberDropBrand(member){
+  if(member.brands.length)return member.brands[0]
+  const name=member.isMe?'My Projects':'Transferred Projects'
+  const brand=mkBrand(name,[])
+  member.brands.push(brand)
+  openBrands.add(brand.id)
+  return brand
+}
+function moveBrandToMember(brandId,targetMemberId,beforeBrandId=null){
+  const source=findBrand(brandId)
+  const targetMember=state.members.find(m=>m.id===targetMemberId)
+  if(!source||!targetMember)return false
+  if(source.m.id===targetMemberId&&!beforeBrandId)return false
+  source.m.brands=source.m.brands.filter(b=>b.id!==brandId)
+  const insertAt=beforeBrandId?targetMember.brands.findIndex(b=>b.id===beforeBrandId):-1
+  if(insertAt>=0)targetMember.brands.splice(insertAt,0,source.b)
+  else targetMember.brands.push(source.b)
+  openMembers.add(targetMember.id)
+  openBrands.add(source.b.id)
+  return true
+}
+function moveProjectToBrand(projectId,targetBrandId,beforeProjectId=null){
+  const source=findProject(projectId)
+  const target=findBrand(targetBrandId)
+  if(!source||!target)return false
+  if(source.b.id===targetBrandId&&beforeProjectId===projectId)return false
+  source.b.projects=source.b.projects.filter(p=>p.id!==projectId)
+  const insertAt=beforeProjectId?target.b.projects.findIndex(p=>p.id===beforeProjectId):-1
+  if(insertAt>=0)target.b.projects.splice(insertAt,0,source.p)
+  else target.b.projects.push(source.p)
+  openMembers.add(target.m.id)
+  openBrands.add(target.b.id)
+  return true
+}
+function moveProjectToMember(projectId,targetMemberId){
+  const source=findProject(projectId)
+  const targetMember=state.members.find(m=>m.id===targetMemberId)
+  if(!source||!targetMember)return false
+  const targetBrand=ensureMemberDropBrand(targetMember)
+  return moveProjectToBrand(projectId,targetBrand.id,null)
+}
 function sbDrop(e,type,id,parentId){
   e.preventDefault()
   e.currentTarget.classList.remove('sb-drag-over')
-  if(!_drag||_drag.type!==type||_drag.id===id)return
-  if(type==='member'){
+  if(!_drag)return
+  let changed=false
+  if(type==='member'&&_drag.type==='member'&&_drag.id!==id){
     const arr=state.members
     const fi=arr.findIndex(m=>m.id===_drag.id),ti=arr.findIndex(m=>m.id===id)
     arr.splice(ti,0,arr.splice(fi,1)[0])
-  } else if(type==='brand'){
-    const mem=state.members.find(m=>m.id===parentId);if(!mem)return
-    const arr=mem.brands
-    const fi=arr.findIndex(b=>b.id===_drag.id),ti=arr.findIndex(b=>b.id===id)
-    arr.splice(ti,0,arr.splice(fi,1)[0])
-  } else if(type==='project'){
+    changed=true
+  } else if(type==='member'&&_drag.type==='brand'){
+    changed=moveBrandToMember(_drag.id,id,null)
+  } else if(type==='member'&&_drag.type==='project'){
+    changed=moveProjectToMember(_drag.id,id)
+  } else if(type==='brand'&&_drag.type==='brand'&&_drag.id!==id){
+    const targetMember=state.members.find(m=>m.id===parentId);if(!targetMember)return
+    changed=moveBrandToMember(_drag.id,targetMember.id,id)
+  } else if(type==='brand'&&_drag.type==='project'){
+    changed=moveProjectToBrand(_drag.id,id,null)
+  } else if(type==='project'&&_drag.type==='project'&&_drag.id!==id){
     const fb=findBrand(parentId);if(!fb)return
     const arr=fb.b.projects
     const fi=arr.findIndex(p=>p.id===_drag.id),ti=arr.findIndex(p=>p.id===id)
     arr.splice(ti,0,arr.splice(fi,1)[0])
+    changed=true
   }
-  save();renderSidebar()
+  if(changed){save();render()}
 }
 
 // ══════════════════════════════════════════════════════
@@ -1015,7 +1121,7 @@ function renderMember(m){
   let h=`<div class="member-row" draggable="true"
     ondragstart="sbDragStart(event,'member','${m.id}',null)"
     ondragend="sbDragEnd(event)"
-    ondragover="sbDragOver(event,'member')"
+    ondragover="sbDragOver(event,'member,brand,project')"
     ondrop="sbDrop(event,'member','${m.id}',null)">
     <div class="m-dot" style="background:${m.color}" onclick="toggleMember('${m.id}')"></div>
     <span class="m-lbl" onclick="toggleMember('${m.id}')">${esc(m.name)}</span>
@@ -1037,7 +1143,7 @@ function renderBrand(b,memberId){
   let h=`<div class="brand-row" draggable="true"
     ondragstart="sbDragStart(event,'brand','${b.id}','${memberId}')"
     ondragend="sbDragEnd(event)"
-    ondragover="sbDragOver(event,'brand')"
+    ondragover="sbDragOver(event,'brand,project')"
     ondrop="sbDrop(event,'brand','${b.id}','${memberId}')">
     <span class="chev ${open?'open':''}" onclick="toggleBrand('${b.id}')">▶</span>
     <span class="b-lbl" onclick="toggleBrand('${b.id}')">${esc(b.name)}</span>
@@ -1097,6 +1203,14 @@ function renderMain(){
     return
   }
 
+  if(viewMode==='globaltasks'){
+    vt.style.display='none'
+    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">My Global Tasks</span>`
+    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="showView('home')">Back Home</button>`
+    content.innerHTML=renderGlobalTasks()
+    return
+  }
+
   if(!found){
     vt.style.display='none'
     bc.innerHTML=`<span>Studio</span>`
@@ -1131,6 +1245,8 @@ function renderMain(){
 
 function renderDashboard(){
   const projects=allActiveProjects().map(entry=>({...entry,health:projectHealth(entry)}))
+  const meId=state.members.find(m=>m.isMe)?.id||''
+  const brands=['all',...[...new Set(projects.map(({b})=>b.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b))]
   const activeCount=projects.length
   const critical=projects.filter(x=>x.health.status==='critical')
   const atRisk=projects.filter(x=>x.health.status==='atrisk')
@@ -1142,7 +1258,12 @@ function renderDashboard(){
     const da=a.health.upcoming?.dueDate||'9999-99-99'
     const db=b.health.upcoming?.dueDate||'9999-99-99'
     return score(b)-score(a) || da.localeCompare(db)
-  }).slice(0,6)
+  }).filter(item=>{
+    if(dashFilter==='mine'&&item.m.id!==meId)return false
+    if(dashFilter==='critical'&&item.health.status!=='critical')return false
+    if(dashBrandFilter!=='all'&&item.b.name!==dashBrandFilter)return false
+    return true
+  }).slice(0,12)
   const alerts=computeAlerts()
 
   return `<div class="dash">
@@ -1183,6 +1304,16 @@ function renderDashboard(){
     <div class="dash-grid">
       <div class="dash-panel dash-section">
         <div class="dash-section-title">Current Projects</div>
+        <div class="dash-filter-row">
+          <div class="dash-filter-chips">
+            <button class="dash-filter-btn ${dashFilter==='all'?'on':''}" onclick="setDashFilter('all')">All</button>
+            <button class="dash-filter-btn ${dashFilter==='mine'?'on':''}" onclick="setDashFilter('mine')">Only My Projects</button>
+            <button class="dash-filter-btn ${dashFilter==='critical'?'on':''}" onclick="setDashFilter('critical')">Critical</button>
+          </div>
+          <select class="dash-brand-select" onchange="setDashBrandFilter(this.value)">
+            ${brands.map(name=>`<option value="${esc(name)}" ${(name===dashBrandFilter)?'selected':''}>${name==='all'?'All Brands':esc(name)}</option>`).join('')}
+          </select>
+        </div>
         <div class="dash-project-list">
           ${spotlight.map(({p,b,m,health})=>{
             const pct=Math.round((health.done/health.total)*100)
@@ -1222,6 +1353,46 @@ function renderDashboard(){
   </div>`
 }
 
+function setDashFilter(v){dashFilter=v;renderMain()}
+function setDashBrandFilter(v){dashBrandFilter=v;renderMain()}
+
+function renderGlobalTasks(){
+  const me=state.members.find(m=>m.isMe)
+  if(!me)return `<div class="empty"><div class="empty-ico">☑️</div><div class="empty-ttl">No personal workspace found</div></div>`
+  const tasks=[]
+  for(const b of me.brands){
+    for(const p of b.projects){
+      if(p.status==='archived')continue
+      for(const t of p.tasks){
+        const prog=t.progress||'not-started'
+        if(prog==='completed')continue
+        tasks.push({t,p,b,m:me})
+      }
+    }
+  }
+  tasks.sort((a,b)=>{
+    const ad=a.t.dueDate||'9999-99-99'
+    const bd=b.t.dueDate||'9999-99-99'
+    const ao=a.t.dueDate&&a.t.dueDate<todayIso()?0:1
+    const bo=b.t.dueDate&&b.t.dueDate<todayIso()?0:1
+    return ao-bo || ad.localeCompare(bd) || a.p.name.localeCompare(b.p.name)
+  })
+  if(!tasks.length){
+    return `<div class="empty"><div class="empty-ico">☑️</div><div class="empty-ttl">No open global tasks</div><div class="empty-sub">You’re clear across all of your active projects.</div></div>`
+  }
+  return `<div class="gtasks">${tasks.map(({t,p,b})=>{
+    const cls=!t.dueDate?'nodate':t.dueDate<todayIso()?'overdue':'upcoming'
+    const lbl=!t.dueDate?'No date':t.dueDate<todayIso()?`Overdue · ${friendly(t.dueDate)}`:`Due ${friendly(t.dueDate)}`
+    return `<div class="gtask-card" onclick="goProject('${p.id}')">
+      <div class="gtask-top">
+        <div class="gtask-title">${esc(t.text)}</div>
+        <div class="gtask-due ${cls}">${esc(lbl)}</div>
+      </div>
+      <div class="gtask-meta">${esc(b.name)} · ${esc(p.name)}${t.startDate?` · Starts ${friendly(t.startDate)}`:''}</div>
+    </div>`
+  }).join('')}</div>`
+}
+
 // ══════════════════════════════════════════════════════
 //  DETAIL VIEW
 // ══════════════════════════════════════════════════════
@@ -1232,6 +1403,7 @@ function renderDetail(p,m,b){
   const notStarted=p.tasks.filter(t=>t.progress==='not-started')
   const shown=showDone?p.tasks:p.tasks.filter(t=>t.progress!=='completed')
   const meetings=[...(p.meetings||[])].sort((a,b)=>a.date.localeCompare(b.date))
+  const travel=[...(p.travel||[])].sort((a,b)=>(a.startDate||a.endDate||'').localeCompare(b.startDate||b.endDate||''))
 
   return `
     ${isArch?`<div class="arch-banner">📦 Archived — unarchive to edit</div>`:''}
@@ -1281,6 +1453,29 @@ function renderDetail(p,m,b){
           <input class="add-meeting-inp" id="newMTitle" placeholder="Meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
           <input type="date" class="add-date-inp" id="newMDate" title="Meeting date">
           <button class="btn btn-primary btn-sm" onclick="doAddMeeting()">Add</button>
+        </div>`:''}
+      </div>
+    </div>
+
+    <!-- TRAVEL -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">✈️ Travel &amp; Logistics<span class="card-cnt">${travel.length}</span></div>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        <div id="travelList">${travel.map(tr=>travelHTML(tr)).join('')}</div>
+        ${!isArch?`<div class="add-travel-row">
+          <select class="travel-type-sel" id="newTravelType">
+            <option>Flight</option>
+            <option>Hotel</option>
+            <option>Factory Contact</option>
+          </select>
+          <input class="travel-link-inp" id="newTravelTitle" placeholder="Details / title" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
+          <input type="date" class="travel-link-inp" id="newTravelStart" style="width:145px">
+          <input type="date" class="travel-link-inp" id="newTravelEnd" style="width:145px">
+          <input class="travel-link-inp" id="newTravelLink" placeholder="https://…" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
+          <button class="btn btn-primary btn-sm" onclick="doAddTravel()">Add</button>
         </div>`:''}
       </div>
     </div>
@@ -1350,7 +1545,11 @@ function taskHTML(t){
     else{const diff=(new Date(t.dueDate)-new Date(td))/864e5;if(diff<=3)dc='date-soon'}
   }
   const txtClass=prog==='completed'?'done':''
-  return `<div class="task-item" data-tid="${t.id}">
+  return `<div class="task-item" data-tid="${t.id}" draggable="true"
+    ondragstart="projDragStart(event,'task','${t.id}')"
+    ondragend="projDragEnd(event)"
+    ondragover="projDragOver(event,'task')"
+    ondrop="projDrop(event,'task','${t.id}')">
     <input type="checkbox" class="task-chk" ${prog==='completed'?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
     <div class="task-body">
       <textarea class="task-txt ${txtClass}" rows="1"
@@ -1391,9 +1590,38 @@ function meetingHTML(mt){
   </div>`
 }
 
+function travelHTML(tr){
+  const dateLbl=tr.startDate&&tr.endDate&&tr.startDate!==tr.endDate
+    ? `${friendly(tr.startDate)} - ${friendly(tr.endDate)}`
+    : friendly(tr.startDate||tr.endDate||'')
+  return `<div class="travel-item" data-trid="${tr.id}">
+    <div class="travel-type">${esc(tr.type)}</div>
+    <div class="travel-main">
+      <input class="travel-title" value="${esc(tr.title)}" placeholder="Details / title" onblur="updateTravelField('${tr.id}','title',this.value)">
+      <div class="travel-row">
+        <select class="travel-type-sel" onchange="updateTravelField('${tr.id}','type',this.value)">
+          <option ${tr.type==='Flight'?'selected':''}>Flight</option>
+          <option ${tr.type==='Hotel'?'selected':''}>Hotel</option>
+          <option ${tr.type==='Factory Contact'?'selected':''}>Factory Contact</option>
+        </select>
+        <input type="date" class="travel-link-inp" style="width:140px" value="${tr.startDate||''}" onchange="updateTravelField('${tr.id}','startDate',this.value)">
+        <input type="date" class="travel-link-inp" style="width:140px" value="${tr.endDate||''}" onchange="updateTravelField('${tr.id}','endDate',this.value)">
+        <input class="travel-link-inp" style="flex:1;min-width:180px" value="${esc(tr.link||'')}" placeholder="https://…" onblur="updateTravelField('${tr.id}','link',this.value)">
+        ${tr.link?`<a class="travel-link" href="${esc(tr.link)}" target="_blank" rel="noopener noreferrer">${esc(tr.link)}</a>`:''}
+        ${dateLbl?`<span class="travel-date">${esc(dateLbl)}</span>`:''}
+      </div>
+    </div>
+    <button class="travel-del" onclick="removeTravel('${tr.id}')" title="Remove">×</button>
+  </div>`
+}
+
 // ── NOTE HTML ─────────────────────────────────────────
 function noteHTML(n){
-  return `<div class="note-card" data-nid="${n.id}">
+  return `<div class="note-card" data-nid="${n.id}" draggable="true"
+    ondragstart="projDragStart(event,'note','${n.id}')"
+    ondragend="projDragEnd(event)"
+    ondragover="projDragOver(event,'note')"
+    ondrop="projDrop(event,'note','${n.id}')">
     <div class="note-head" onclick="toggleNote('${n.id}',event)">
       <span class="note-chev ${n.open?'open':''}">▶</span>
       <input class="note-title-inp" value="${esc(n.title)}" placeholder="Note title"
@@ -1894,9 +2122,10 @@ function escapeHTML(text){
 function sanitizeNoteHTML(html){
   const tpl=document.createElement('template')
   tpl.innerHTML=html||''
-  const allowed=new Set(['B','STRONG','I','EM','U','MARK','BR','P','DIV','UL','OL','LI','H2','H3','BLOCKQUOTE','A'])
+  const allowed=new Set(['B','STRONG','I','EM','U','MARK','BR','P','DIV','UL','OL','LI','H2','H3','BLOCKQUOTE','A','IMG'])
   ;[...tpl.content.querySelectorAll('*')].forEach(node=>{
     const href=node.tagName==='A'?(node.getAttribute('href')||'').trim():''
+    const src=node.tagName==='IMG'?(node.getAttribute('src')||'').trim():''
     if(!allowed.has(node.tagName)){
       node.replaceWith(...node.childNodes)
       return
@@ -1909,6 +2138,14 @@ function sanitizeNoteHTML(html){
         node.setAttribute('rel','noopener noreferrer')
       }else{
         node.replaceWith(...node.childNodes)
+      }
+    }
+    if(node.tagName==='IMG'){
+      if(/^data:image\//i.test(src)||/^https?:\/\//i.test(src)){
+        node.setAttribute('src',src)
+        node.setAttribute('alt','')
+      }else{
+        node.remove()
       }
     }
   })
@@ -1932,20 +2169,47 @@ function insertHTMLAtSelection(html,nid){
   })
 }
 
-function wrapSelection(tag,nid,attrs=''){
+function createRangeFromStoredSelection(nid){
+  const sel=window.getSelection()
+  if(sel?.rangeCount)return sel.getRangeAt(0)
+  return noteSelections[nid]?noteSelections[nid].cloneRange():null
+}
+
+function closestEditorNode(node,tags,editor){
+  const wanted=new Set(tags.map(t=>t.toUpperCase()))
+  let cur=node?.nodeType===3?node.parentNode:node
+  while(cur&&cur!==editor){
+    if(wanted.has(cur.tagName))return cur
+    cur=cur.parentNode
+  }
+  return null
+}
+
+function closestBlockNode(node,editor){
+  return closestEditorNode(node,['P','DIV','H2','H3','BLOCKQUOTE','LI'],editor)||editor
+}
+
+function placeCursorInside(node,atEnd=true){
+  const range=document.createRange()
+  const sel=window.getSelection()
+  range.selectNodeContents(node)
+  range.collapse(!atEnd?true:false)
+  sel.removeAllRanges()
+  sel.addRange(range)
+}
+
+function wrapSelection(tag,nid,attrs={}){
   return withEditorSelection(nid,(range,sel)=>{
     if(range.collapsed){
-      const html=`<${tag}${attrs}>${tag==='mark'?'highlight':'text'}</${tag}>`
-      insertHTMLAtSelection(html,nid)
+      const el=document.createElement(tag)
+      Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v))
+      el.textContent=tag==='mark'?'highlight':'text'
+      range.insertNode(el)
+      placeCursorInside(el)
       return
     }
     const wrapper=document.createElement(tag)
-    if(attrs){
-      attrs.trim().split(/\s+/).forEach(pair=>{
-        const [k,v]=pair.split('=')
-        if(k&&v)wrapper.setAttribute(k,v.replace(/^"|"$/g,''))
-      })
-    }
+    Object.entries(attrs).forEach(([k,v])=>wrapper.setAttribute(k,v))
     try{
       range.surroundContents(wrapper)
     }catch{
@@ -1960,36 +2224,97 @@ function wrapSelection(tag,nid,attrs=''){
   })
 }
 
+function replaceTag(node,tag){
+  if(!node||node.tagName===tag.toUpperCase())return node
+  const next=document.createElement(tag)
+  while(node.firstChild)next.appendChild(node.firstChild)
+  node.replaceWith(next)
+  return next
+}
+
+function stripInlineFormatting(root){
+  ;[...root.querySelectorAll('b,strong,i,em,u,mark,a')].forEach(el=>el.replaceWith(...el.childNodes))
+}
+
 function toggleBlock(tag,nid){
   const editor=getEditor(nid)
   if(!editor)return
-  editor.focus()
-  document.execCommand('formatBlock',false,tag.toUpperCase())
-  refreshToolbar(nid)
+  withEditorSelection(nid,(range,sel)=>{
+    const block=closestBlockNode(range.startContainer,editor)
+    const updated=replaceTag(block===editor?document.createElement('div'):block,tag)
+    if(block===editor){
+      updated.appendChild(range.extractContents())
+      range.insertNode(updated)
+    }
+    placeCursorInside(updated)
+    noteSelections[nid]=window.getSelection().getRangeAt(0).cloneRange()
+  })
 }
 
 function toggleList(type,nid){
   const editor=getEditor(nid)
   if(!editor)return
-  editor.focus()
-  document.execCommand(type==='ol'?'insertOrderedList':'insertUnorderedList',false,null)
-  refreshToolbar(nid)
+  withEditorSelection(nid,(range,sel)=>{
+    const text=(range.toString().trim()||closestBlockNode(range.startContainer,editor).textContent||'List item').trim()
+    const lines=text.split(/\n+/).map(s=>s.trim()).filter(Boolean)
+    const list=document.createElement(type)
+    ;(lines.length?lines:['List item']).forEach(line=>{
+      const li=document.createElement('li')
+      li.textContent=line
+      list.appendChild(li)
+    })
+    if(range.collapsed){
+      const block=closestBlockNode(range.startContainer,editor)
+      if(block!==editor)block.replaceWith(list)
+      else range.insertNode(list)
+    }else{
+      range.deleteContents()
+      range.insertNode(list)
+    }
+    placeCursorInside(list.querySelector('li'),true)
+    noteSelections[nid]=window.getSelection().getRangeAt(0).cloneRange()
+  })
 }
 
 function clearFormatting(nid){
   const editor=getEditor(nid)
   if(!editor)return
-  editor.focus()
-  document.execCommand('removeFormat',false,null)
-  document.execCommand('unlink',false,null)
-  refreshToolbar(nid)
+  withEditorSelection(nid,(range)=>{
+    if(range.collapsed){
+      const block=closestBlockNode(range.startContainer,editor)
+      if(block!==editor){
+        const plain=replaceTag(block,'p')
+        stripInlineFormatting(plain)
+        placeCursorInside(plain)
+      }
+      return
+    }
+    const text=range.toString()
+    range.deleteContents()
+    range.insertNode(document.createTextNode(text))
+  })
 }
 
 function promptForLink(nid){
   const href=prompt('Paste a full URL (https://...)')
   if(!href)return
   if(!/^https?:\/\//i.test(href)){alert('Please use a full URL starting with http:// or https://');return}
-  insertHTMLAtSelection(`<a href="${escapeHTML(href)}" target="_blank" rel="noopener noreferrer">${escapeHTML(href)}</a>`,nid)
+  const info=createRangeFromStoredSelection(nid)
+  const editor=getEditor(nid)
+  if(!info||!editor)return
+  withEditorSelection(nid,(range,sel)=>{
+    if(range.collapsed){
+      const a=document.createElement('a')
+      a.href=href
+      a.target='_blank'
+      a.rel='noopener noreferrer'
+      a.textContent=href
+      range.insertNode(a)
+      placeCursorInside(a,true)
+    }else{
+      wrapSelection('a',nid,{href,target:'_blank',rel:'noopener noreferrer'})
+    }
+  })
 }
 
 function rteCmd(event,cmd,nid){
@@ -1997,10 +2322,10 @@ function rteCmd(event,cmd,nid){
   activeEditorId=nid
   const editor=getEditor(nid)
   if(editor)editor.focus()
-  if(cmd==='bold')document.execCommand('bold',false,null)
-  else if(cmd==='italic')document.execCommand('italic',false,null)
-  else if(cmd==='underline')document.execCommand('underline',false,null)
-  else if(cmd==='highlight')document.execCommand('backColor',false,'#FFE566')
+  if(cmd==='bold')wrapSelection('strong',nid)
+  else if(cmd==='italic')wrapSelection('em',nid)
+  else if(cmd==='underline')wrapSelection('u',nid)
+  else if(cmd==='highlight')wrapSelection('mark',nid)
   else if(cmd==='bullets')toggleList('ul',nid)
   else if(cmd==='numbers')toggleList('ol',nid)
   else if(cmd==='h2')toggleBlock('h2',nid)
@@ -2014,22 +2339,37 @@ function rteCmd(event,cmd,nid){
 function refreshToolbar(nid){
   const toolbar=document.querySelector(`.rte-toolbar[data-nid="${nid}"]`)
   if(!toolbar)return
-  const isOn=(cmd,val=null)=>{
-    try{return val==null?document.queryCommandState(cmd):document.queryCommandValue(cmd)===val}catch{return false}
-  }
+  const editor=getEditor(nid)
+  const range=createRangeFromStoredSelection(nid)
   toolbar.querySelectorAll('.rte-btn').forEach(btn=>btn.classList.remove('active-fmt'))
-  if(isOn('bold'))toolbar.querySelector('[data-cmd="bold"]')?.classList.add('active-fmt')
-  if(isOn('italic'))toolbar.querySelector('[data-cmd="italic"]')?.classList.add('active-fmt')
-  if(isOn('underline'))toolbar.querySelector('[data-cmd="underline"]')?.classList.add('active-fmt')
-  if(isOn('insertUnorderedList'))toolbar.querySelector('[data-cmd="bullets"]')?.classList.add('active-fmt')
-  if(isOn('insertOrderedList'))toolbar.querySelector('[data-cmd="numbers"]')?.classList.add('active-fmt')
-  const block=String(document.queryCommandValue('formatBlock')||'').toLowerCase()
-  if(block.includes('h2'))toolbar.querySelector('[data-cmd="h2"]')?.classList.add('active-fmt')
-  if(block.includes('h3'))toolbar.querySelector('[data-cmd="h3"]')?.classList.add('active-fmt')
-  if(block.includes('blockquote'))toolbar.querySelector('[data-cmd="quote"]')?.classList.add('active-fmt')
+  if(!range||!editor)return
+  const start=range.startContainer
+  if(closestEditorNode(start,['B','STRONG'],editor))toolbar.querySelector('[data-cmd="bold"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['I','EM'],editor))toolbar.querySelector('[data-cmd="italic"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['U'],editor))toolbar.querySelector('[data-cmd="underline"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['MARK'],editor))toolbar.querySelector('[data-cmd="highlight"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['UL'],editor))toolbar.querySelector('[data-cmd="bullets"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['OL'],editor))toolbar.querySelector('[data-cmd="numbers"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['H2'],editor))toolbar.querySelector('[data-cmd="h2"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['H3'],editor))toolbar.querySelector('[data-cmd="h3"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['BLOCKQUOTE'],editor))toolbar.querySelector('[data-cmd="quote"]')?.classList.add('active-fmt')
+  if(closestEditorNode(start,['A'],editor))toolbar.querySelector('[data-cmd="link"]')?.classList.add('active-fmt')
 }
 
 function handleNotePaste(e,nid){
+  if(e.clipboardData?.files?.length){
+    const images=[...e.clipboardData.files].filter(file=>file.type.startsWith('image/'))
+    if(images.length){
+      e.preventDefault()
+      rememberSelection(nid)
+      images.reduce((p,file)=>p.then(()=>new Promise(res=>{
+        const reader=new FileReader()
+        reader.onload=()=>{insertHTMLAtSelection(`<img src="${reader.result}" alt="">`,nid);res()}
+        reader.readAsDataURL(file)
+      })),Promise.resolve())
+      return
+    }
+  }
   e.preventDefault()
   const html=e.clipboardData.getData('text/html')
   const text=e.clipboardData.getData('text/plain')
@@ -2042,9 +2382,9 @@ function handleNotePaste(e,nid){
 }
 
 function rteKeydown(e,nid){
-  if(e.key==='b'&&(e.ctrlKey||e.metaKey)){e.preventDefault();document.execCommand('bold',false,null)}
-  else if(e.key==='i'&&(e.ctrlKey||e.metaKey)){e.preventDefault();document.execCommand('italic',false,null)}
-  else if(e.key==='u'&&(e.ctrlKey||e.metaKey)){e.preventDefault();document.execCommand('underline',false,null)}
+  if(e.key==='b'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('strong',nid)}
+  else if(e.key==='i'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('em',nid)}
+  else if(e.key==='u'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('u',nid)}
   setTimeout(()=>{rememberSelection(nid);refreshToolbar(nid)},0)
 }
 
@@ -2087,29 +2427,46 @@ function onSearchKey(e){
 
 function doSearch(q){
   const results=document.getElementById('searchResults')
-  if(!q||q.length<2){results.innerHTML='<div class="search-empty">Start typing to search all notes</div>';return}
+  if(!q||q.length<2){results.innerHTML='<div class="search-empty">Start typing to search across notes, tasks, links, and summaries</div>';return}
 
   const qLow=q.toLowerCase()
   const hits=[]
 
-  for(const m of state.members)for(const b of m.brands)for(const p of b.projects)for(const n of p.notes){
-    const titleMatch=n.title.toLowerCase().includes(qLow)
-    const body=stripHtml(n.body||'')
-    const bodyMatch=body.toLowerCase().includes(qLow)
-    if(titleMatch||bodyMatch){
-      const snippet=bodyMatch?highlightSnippet(body,q):''
-      hits.push({n,p,b,m,snippet})
+  for(const m of state.members)for(const b of m.brands)for(const p of b.projects){
+    for(const n of p.notes){
+      const titleMatch=n.title.toLowerCase().includes(qLow)
+      const body=stripHtml(n.body||'')
+      const bodyMatch=body.toLowerCase().includes(qLow)
+      if(titleMatch||bodyMatch){
+        hits.push({kind:'note',title:n.title||'Untitled Note',p,b,m,id:n.id,snippet:highlightSnippet(bodyMatch?body:n.title,q)})
+      }
+    }
+    for(const t of p.tasks||[]){
+      if((t.text||'').toLowerCase().includes(qLow)){
+        hits.push({kind:'task',title:t.text,p,b,m,id:t.id,snippet:highlightSnippet(t.text,q)})
+      }
+    }
+    const summary=stripHtml(p.summary||'')
+    if(summary.toLowerCase().includes(qLow)){
+      hits.push({kind:'summary',title:`${p.name} Summary`,p,b,m,id:p.id,snippet:highlightSnippet(summary,q)})
+    }
+    for(const l of p.links||[]){
+      const hay=`${l.label||''} ${l.url||''}`.trim()
+      if(hay.toLowerCase().includes(qLow)){
+        hits.push({kind:'link',title:l.label||l.url||'Project Link',p,b,m,id:l.id,snippet:highlightSnippet(hay,q)})
+      }
     }
   }
 
   if(!hits.length){results.innerHTML=`<div class="search-empty">No results for "<strong>${esc(q)}</strong>"</div>`;return}
 
-  results.innerHTML=hits.slice(0,20).map(({n,p,b,m,snippet})=>`
-    <div class="search-result" onclick="goNote('${p.id}','${n.id}')">
+  results.innerHTML=hits.slice(0,24).map(({kind,title,p,b,m,id,snippet})=>`
+    <div class="search-result" onclick="goSearchResult('${kind}','${p.id}','${id}')">
       <div class="sr-top">
+        <span class="sr-kind">${esc(kind)}</span>
         <span class="sr-project" style="color:${m.color}">${esc(m.name)} · ${esc(b.name)} · ${esc(p.name)}</span>
       </div>
-      <div class="sr-title">${esc(n.title)}</div>
+      <div class="sr-title">${esc(title)}</div>
       ${snippet?`<div class="sr-snippet">${snippet}</div>`:''}
     </div>`).join('')
 }
@@ -2138,6 +2495,40 @@ function goNote(pid,nid){
       if(el)el.scrollIntoView({behavior:'smooth',block:'center'})
     },100)
   },50)
+}
+
+function goTask(pid,tid){
+  closeSearch()
+  goProject(pid)
+  setTimeout(()=>{
+    const el=document.querySelector(`.task-item[data-tid="${tid}"]`)
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'})
+  },100)
+}
+
+function goSummary(pid){
+  closeSearch()
+  goProject(pid)
+  setTimeout(()=>{
+    const el=document.querySelector('.summary-ta')
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'})
+  },100)
+}
+
+function goLink(pid,lid){
+  closeSearch()
+  goProject(pid)
+  setTimeout(()=>{
+    const el=document.querySelector(`.link-item[data-lid="${lid}"]`)
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'})
+  },100)
+}
+
+function goSearchResult(kind,pid,id){
+  if(kind==='note')goNote(pid,id)
+  else if(kind==='task')goTask(pid,id)
+  else if(kind==='link')goLink(pid,id)
+  else goSummary(pid)
 }
 
 // ══════════════════════════════════════════════════════
@@ -2170,6 +2561,50 @@ function showView(v){
 
 function showSyncFromHome(){
   showView('sync')
+}
+
+function projDragStart(e,type,id){
+  const tag=e.target.tagName
+  if(['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(tag)||e.target.isContentEditable){
+    e.preventDefault()
+    return
+  }
+  _drag={scope:'project',type,id}
+  e.dataTransfer.effectAllowed='move'
+  e.currentTarget.classList.add('proj-dragging')
+}
+
+function projDragEnd(e){
+  e.currentTarget.classList.remove('proj-dragging')
+  document.querySelectorAll('.proj-drag-over').forEach(el=>el.classList.remove('proj-drag-over'))
+  if(_drag?.scope==='project')_drag=null
+}
+
+function projDragOver(e,type){
+  if(!_drag||_drag.scope!=='project'||_drag.type!==type)return
+  e.preventDefault()
+  e.dataTransfer.dropEffect='move'
+  document.querySelectorAll('.proj-drag-over').forEach(el=>el.classList.remove('proj-drag-over'))
+  e.currentTarget.classList.add('proj-drag-over')
+}
+
+function moveProjectListItem(list,fromId,toId,key){
+  const fromIndex=list.findIndex(item=>item[key]===fromId)
+  const toIndex=list.findIndex(item=>item[key]===toId)
+  if(fromIndex<0||toIndex<0||fromIndex===toIndex)return false
+  list.splice(toIndex,0,list.splice(fromIndex,1)[0])
+  return true
+}
+
+function projDrop(e,type,id){
+  e.preventDefault()
+  e.currentTarget.classList.remove('proj-drag-over')
+  if(!_drag||_drag.scope!=='project'||_drag.type!==type||_drag.id===id)return
+  const f=sel();if(!f)return
+  let changed=false
+  if(type==='task')changed=moveProjectListItem(f.p.tasks,_drag.id,id,'id')
+  else if(type==='note')changed=moveProjectListItem(f.p.notes,_drag.id,id,'id')
+  if(changed){save();renderMain()}
 }
 
 function setViewMode(v){
@@ -2321,6 +2756,36 @@ function updateMeetingDate(mid,v){
   const f=sel();if(!f)return
   const mt=f.p.meetings?.find(mt=>mt.id===mid)
   if(mt){mt.date=v;save()}
+}
+
+// ══════════════════════════════════════════════════════
+//  TRAVEL CRUD
+// ══════════════════════════════════════════════════════
+function doAddTravel(){
+  const f=sel();if(!f)return
+  const type=document.getElementById('newTravelType')?.value||'Flight'
+  const title=(document.getElementById('newTravelTitle')?.value||'').trim()
+  if(!title)return
+  const startDate=document.getElementById('newTravelStart')?.value||''
+  const endDate=document.getElementById('newTravelEnd')?.value||''
+  const link=(document.getElementById('newTravelLink')?.value||'').trim()
+  if(!f.p.travel)f.p.travel=[]
+  f.p.travel.push({id:uid(),type,title,startDate,endDate,link})
+  save();renderMain()
+}
+
+function updateTravelField(id,key,value){
+  const f=sel();if(!f)return
+  const item=(f.p.travel||[]).find(tr=>tr.id===id)
+  if(!item)return
+  item[key]=key==='title'||key==='link'?value.trim():value
+  save()
+}
+
+function removeTravel(id){
+  const f=sel();if(!f)return
+  f.p.travel=(f.p.travel||[]).filter(tr=>tr.id!==id)
+  save();renderMain()
 }
 
 // ══════════════════════════════════════════════════════
