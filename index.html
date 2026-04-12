@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Studio</title>
+<title>Studio W</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -307,6 +307,10 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .cal-chip-ns{opacity:.55}
 .cal-chip-ip{outline:2px solid var(--warn);outline-offset:-2px}
 .cal-chip-done{opacity:.4}
+.cal-chip-proj-start{background:var(--ok)!important;font-weight:600}
+.cal-chip-proj-end{background:var(--red)!important;font-weight:600}
+.mini-day.has-proj-date{font-weight:700;color:var(--ok)}
+.mini-day.has-proj-date::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--ok)}
 
 /* ── LOCK SCREEN ─────────────────────────────────────── */
 .lock-screen{position:fixed;inset:0;background:var(--sb);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:0}
@@ -351,13 +355,105 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .sync-actions{display:flex;gap:8px;flex-wrap:wrap}
 .drop-zone{border:2px dashed var(--bdr);border-radius:var(--rs);padding:24px;text-align:center;font-size:13px;color:var(--tm);cursor:pointer;transition:all .15s;margin-top:14px}
 .drop-zone:hover,.drop-zone.drag-over{border-color:var(--acc);background:var(--acc-l);color:var(--acc)}
-</style>
+
+/* ── MOBILE HAMBURGER (hidden on desktop) ────────────── */
+.mob-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:6px 8px;color:var(--sb-tb);font-size:20px;line-height:1;flex-shrink:0}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99}
+.sb-overlay.open{display:block}
+
+/* ── RESPONSIVE / MOBILE ─────────────────────────────── */
+@media(max-width:768px){
+  /* Sidebar becomes a slide-in drawer */
+  .sb{position:fixed;left:-260px;top:0;height:100dvh;z-index:100;transition:left .22s ease;box-shadow:none}
+  .sb.mob-open{left:0;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+  .mob-menu-btn{display:flex;align-items:center}
+
+  /* Main fills full width */
+  body{overflow:hidden}
+  .main{width:100%;min-width:0}
+
+  /* Topbar compact */
+  .topbar{padding:0 12px;gap:8px;height:50px}
+  .breadcrumb{font-size:12px}
+  .bc-cur{max-width:140px}
+  .search-wrap{display:none}  /* hide search on mobile — use scroll */
+  .view-toggle{gap:0}
+  .vt-btn{padding:4px 8px;font-size:11px}
+  #tbActions .btn{padding:4px 9px;font-size:11px}
+
+  /* Content */
+  .content{padding:16px 14px}
+
+  /* Project title */
+  .proj-title-input{font-size:18px}
+
+  /* Cards */
+  .card{margin-bottom:12px}
+  .card-head{padding:11px 14px}
+  .card-body{padding:12px 14px}
+
+  /* Tasks — stack dates vertically */
+  .task-item{gap:8px;padding:10px 0}
+  .task-body{gap:6px}
+  .task-dates{flex-direction:column;gap:6px;align-items:flex-start}
+  .task-date-field{flex-direction:row;align-items:center;gap:6px}
+  .prog-wrap{margin-top:0}
+  .prog-sel{font-size:12px;padding:4px 10px}
+  .task-chk{width:18px;height:18px;flex-shrink:0;margin-top:2px}
+
+  /* Notes */
+  .note-head{padding:10px 12px;gap:6px}
+  .rte-content{min-height:80px;font-size:14px}
+
+  /* Links */
+  .add-link-row{flex-wrap:wrap}
+  .link-inp{width:100%!important;flex:none!important}
+
+  /* Summary */
+  .proj-dates-row{flex-direction:column;gap:10px}
+  .summary-ta{font-size:13px}
+
+  /* Meetings */
+  .add-meeting-row{flex-wrap:wrap}
+
+  /* Calendar month grid */
+  .cal-month{gap:2px}
+  .cal-day{min-height:52px;padding:3px 2px}
+  .cal-day-num{font-size:11px}
+  .cal-dow{font-size:10px;padding:4px 0}
+  .cal-chip{font-size:9px;padding:1px 4px;border-radius:2px}
+  .cal-more{font-size:9px}
+  .cal-nav{margin-bottom:10px}
+  .cal-nav-title{font-size:14px}
+  .cal-nav-btn{padding:4px 8px;font-size:11px}
+  .cal-add-hint{display:none}
+
+  /* 6-month grid — 2 cols instead of 3 */
+  .six-month-grid{grid-template-columns:1fr 1fr;gap:14px}
+
+  /* Global cal legend wraps */
+  .gcal-legend{gap:6px}
+  .gcal-legend-item{font-size:10px}
+
+  /* Sidebar footer */
+  .sb-foot{padding:8px 14px;gap:8px}
+  .sb-foot-btn{font-size:11px}
+
+  /* Modal */
+  .modal-box{width:calc(100vw - 24px);padding:20px 16px}
+
+  /* Lock screen */
+  .lock-box{padding:32px 24px;width:calc(100vw - 40px)}
+}
 </head>
 <body>
 
+<!-- MOBILE SIDEBAR OVERLAY -->
+<div class="sb-overlay" id="sbOverlay" onclick="closeMobileSidebar()"></div>
+
 <!-- SIDEBAR -->
-<nav class="sb">
-  <div class="sb-head"><div class="logo">Studio<em>.</em></div></div>
+<nav class="sb" id="sidebar">
+  <div class="sb-head"><div class="logo">Studio<em> W</em></div></div>
   <div class="sb-scroll" id="sbTree"></div>
   <div class="sb-foot">
     <button class="sb-foot-btn" onclick="showView('allcal')">
@@ -375,7 +471,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <div class="breadcrumb" id="bc"><span>Studio</span></div>
+    <button class="mob-menu-btn" onclick="toggleMobileSidebar()" aria-label="Menu">☰</button>
+    <div class="breadcrumb" id="bc"><span>Studio W</span></div>
     <div class="tb-right">
       <!-- Search -->
       <div class="search-wrap">
@@ -427,7 +524,7 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 <!-- LOCK SCREEN -->
 <div class="lock-screen" id="lockScreen">
   <div class="lock-box">
-    <div class="lock-logo">Studio<em>.</em></div>
+    <div class="lock-logo">Studio<em> W</em></div>
     <div class="lock-icon">🔒</div>
     <div class="lock-title">Welcome back</div>
     <div class="lock-sub">Enter your password to continue</div>
@@ -1123,6 +1220,17 @@ function renderMonthView(p,m){
     })
   }
 
+  // Build project milestone map: start/end dates
+  const projMilestones={}
+  if(calFilter!=='meetings'){
+    if(p.startDate){
+      projMilestones[p.startDate]=[...(projMilestones[p.startDate]||[]),{type:'start',p}]
+    }
+    if(p.endDate){
+      projMilestones[p.endDate]=[...(projMilestones[p.endDate]||[]),{type:'end',p}]
+    }
+  }
+
   let h=`<div class="cal-nav">
     <div class="cal-nav-title">${MONTHS[mon]} ${year}</div>
     <div class="cal-nav-btns">
@@ -1141,23 +1249,35 @@ function renderMonthView(p,m){
     const isToday=iso===today
     const tasks=taskMap[iso]||[]
     const meetings=meetingMap[iso]||[]
+    const milestones=projMilestones[iso]||[]
     const allItems=[
+      ...milestones.map(ms=>({isProjDate:true,ms})),
       ...meetings.map(mt=>({isMeeting:true,mt})),
-      ...tasks.map(({t,color,isSpan,prog})=>({isMeeting:false,t,color,isSpan,prog}))
+      ...tasks.map(({t,color,isSpan,prog})=>({isMeeting:false,isProjDate:false,t,color,isSpan,prog}))
     ]
     const shown=allItems.slice(0,3)
     const more=allItems.length-3
 
     h+=`<div class="cal-day ${isToday?'today':''}" onclick="calDayClick('${iso}')">
       <div class="cal-day-num">${d}</div>
-      <div class="cal-chips">${shown.map(item=>item.isMeeting
-        ?`<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)}"
-            onclick="event.stopPropagation()">🤝 ${esc(item.mt.title.slice(0,18))}</div>`
-        :`<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)}"
-            onclick="event.stopPropagation();goProject('${p.id}')">
-            ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,22))}
+      <div class="cal-chips">${shown.map(item=>{
+        if(item.isProjDate){
+          const isStart=item.ms.type==='start'
+          return `<div class="cal-chip ${isStart?'cal-chip-proj-start':'cal-chip-proj-end'}"
+            title="Project ${isStart?'Start':'End'}: ${esc(item.ms.p.name)}"
+            onclick="event.stopPropagation();goProject('${item.ms.p.id}')">
+            ${isStart?'▶ Start':'■ End'}
           </div>`
-      ).join('')}</div>
+        }
+        if(item.isMeeting){
+          return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)}"
+            onclick="event.stopPropagation()">🤝 ${esc(item.mt.title.slice(0,18))}</div>`
+        }
+        return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)}"
+          onclick="event.stopPropagation();goProject('${p.id}')">
+          ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,22))}
+        </div>`
+      }).join('')}</div>
       ${more>0?`<div class="cal-more">+${more} more</div>`:''}
       <span class="cal-add-hint">＋</span>
     </div>`
@@ -1190,6 +1310,13 @@ function render6Month(p,m){
     ;(p.meetings||[]).forEach(mt=>{if(mt.date)meetingDates.add(mt.date)})
   }
 
+  // Project milestone dates
+  const projDates=new Set()
+  if(calFilter!=='meetings'){
+    if(p.startDate)projDates.add(p.startDate)
+    if(p.endDate)projDates.add(p.endDate)
+  }
+
   const today=todayIso()
   let h=`<div class="six-month-grid">`
   for(let mo=0;mo<6;mo++){
@@ -1207,9 +1334,11 @@ function render6Month(p,m){
       const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
       const hasTasks=taskDates.has(iso)
       const hasMeeting=meetingDates.has(iso)
+      const hasProjDate=projDates.has(iso)
       const isToday=iso===today
       let cls='mini-day'
       if(isToday)cls+=' today-mini'
+      else if(hasProjDate)cls+=' has-proj-date'
       else if(hasMeeting)cls+=' has-meeting'
       else if(hasTasks)cls+=' has-tasks'
       h+=`<div class="${cls}" onclick="goMonth('${iso}')" title="${iso}">${day}</div>`
@@ -1224,15 +1353,14 @@ function render6Month(p,m){
 //  GLOBAL CALENDAR (all members/projects)
 // ══════════════════════════════════════════════════════
 function renderAllCalendar(){
-  // Collect all tasks and meetings across every active project
-  const taskMap={}, meetingMap={}
-  const memberColors={}
+  // Collect tasks, meetings, and project milestones across every active project
+  const taskMap={}, meetingMap={}, projMap={}
   for(const m of state.members){
-    memberColors[m.id]=m.color
     for(const b of m.brands){
       for(const p of b.projects){
         if(p.status==='archived')continue
         if(calFilter!=='meetings'){
+          // Tasks
           for(const t of p.tasks){
             if(!t.dueDate)continue
             const prog=t.progress||'not-started'
@@ -1252,6 +1380,15 @@ function renderAllCalendar(){
               }
             }
           }
+          // Project start/end milestones
+          if(p.startDate){
+            if(!projMap[p.startDate])projMap[p.startDate]=[]
+            projMap[p.startDate].push({type:'start',p,m})
+          }
+          if(p.endDate){
+            if(!projMap[p.endDate])projMap[p.endDate]=[]
+            projMap[p.endDate].push({type:'end',p,m})
+          }
         }
         if(calFilter!=='tasks'){
           for(const mt of p.meetings||[]){
@@ -1267,7 +1404,9 @@ function renderAllCalendar(){
   // Legend
   const activeMembers=state.members.filter(m=>m.brands.some(b=>b.projects.some(p=>p.status!=='archived')))
   const legend=activeMembers.map(m=>`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:${m.color}"></div>${esc(m.name)}</div>`).join('')
-  +`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:#9B6DE8"></div>Meetings</div>`
+    +`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:#9B6DE8"></div>Meetings</div>`
+    +`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:var(--ok)"></div>Project Start</div>`
+    +`<div class="gcal-legend-item"><div class="gcal-legend-dot" style="background:var(--red)"></div>Project End</div>`
 
   const year=calDate.getFullYear(),mon=calDate.getMonth()
   const firstDay=new Date(year,mon,1).getDay()
@@ -1289,9 +1428,9 @@ function renderAllCalendar(){
   <div class="gcal-legend">${legend}</div>`
 
   if(calMode==='6month'){
-    // 6-month overview across all projects
     const taskDates=new Set(Object.keys(taskMap))
     const meetDates=new Set(Object.keys(meetingMap))
+    const projDates=new Set(Object.keys(projMap))
     let h=filterRow+`<div class="six-month-grid">`
     for(let mo=0;mo<6;mo++){
       const d=new Date(calDate.getFullYear(),calDate.getMonth()+mo,1)
@@ -1305,6 +1444,7 @@ function renderAllCalendar(){
         const isToday=iso===today
         let cls='mini-day'
         if(isToday)cls+=' today-mini'
+        else if(projDates.has(iso))cls+=' has-proj-date'
         else if(meetDates.has(iso))cls+=' has-meeting'
         else if(taskDates.has(iso))cls+=' has-tasks'
         h+=`<div class="${cls}" onclick="goMonth('${iso}')" title="${iso}">${day}</div>`
@@ -1329,23 +1469,35 @@ function renderAllCalendar(){
   for(let d=1;d<=daysInMonth;d++){
     const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const isToday=iso===today
-    const tasks=taskMap[iso]||[]
+    const milestones=projMap[iso]||[]
     const meets=meetingMap[iso]||[]
+    const tasks=taskMap[iso]||[]
     const all=[
+      ...milestones.map(ms=>({isProjDate:true,ms})),
       ...meets.map(x=>({isMeeting:true,...x})),
-      ...tasks.map(x=>({isMeeting:false,...x}))
+      ...tasks.map(x=>({isProjDate:false,isMeeting:false,...x}))
     ]
     const shown=all.slice(0,3),more=all.length-3
     h+=`<div class="cal-day ${isToday?'today':''}" style="cursor:default">
       <div class="cal-day-num">${d}</div>
-      <div class="cal-chips">${shown.map(item=>item.isMeeting
-        ?`<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)} — ${esc(item.p.name)}"
-            onclick="event.stopPropagation();goProject('${item.p.id}')">🤝 ${esc(item.mt.title.slice(0,16))}</div>`
-        :`<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)} — ${esc(item.p.name)}"
-            onclick="event.stopPropagation();goProject('${item.p.id}')">
-            ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,20))}
+      <div class="cal-chips">${shown.map(item=>{
+        if(item.isProjDate){
+          const isStart=item.ms.type==='start'
+          return `<div class="cal-chip ${isStart?'cal-chip-proj-start':'cal-chip-proj-end'}"
+            title="${isStart?'Start':'End'}: ${esc(item.ms.p.name)}"
+            onclick="event.stopPropagation();goProject('${item.ms.p.id}')">
+            ${isStart?'▶ Start':'■ End'}: ${esc(item.ms.p.name.slice(0,14))}
           </div>`
-      ).join('')}</div>
+        }
+        if(item.isMeeting){
+          return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)} — ${esc(item.p.name)}"
+            onclick="event.stopPropagation();goProject('${item.p.id}')">🤝 ${esc(item.mt.title.slice(0,16))}</div>`
+        }
+        return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)} — ${esc(item.p.name)}"
+          onclick="event.stopPropagation();goProject('${item.p.id}')">
+          ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,20))}
+        </div>`
+      }).join('')}</div>
       ${more>0?`<div class="cal-more">+${more} more</div>`:''}
     </div>`
   }
@@ -1490,15 +1642,26 @@ function goNote(pid,nid){
 function toggleMember(id){openMembers.has(id)?openMembers.delete(id):openMembers.add(id);renderSidebar()}
 function toggleBrand(id){openBrands.has(id)?openBrands.delete(id):openBrands.add(id);renderSidebar()}
 
+// ── MOBILE SIDEBAR ────────────────────────────────────
+function toggleMobileSidebar(){
+  document.getElementById('sidebar').classList.toggle('mob-open')
+  document.getElementById('sbOverlay').classList.toggle('open')
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('mob-open')
+  document.getElementById('sbOverlay').classList.remove('open')
+}
+
 function goProject(id){
   selId=id;showDone=false;viewMode='detail'
   const f=findProject(id)
   if(f){openMembers.add(f.m.id);openBrands.add(f.b.id)}
+  closeMobileSidebar()
   render()
 }
 
 function showView(v){
-  viewMode=v;render()
+  viewMode=v;closeMobileSidebar();render()
 }
 
 function setViewMode(v){
