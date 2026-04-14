@@ -808,6 +808,98 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .sort-toggle-btn{font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;font-family:inherit;color:var(--tm);transition:all .14s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 .sort-toggle-btn.on{background:var(--acc-l);border-color:var(--acc);color:var(--acc);font-weight:600}
 
+/* ══════════════════════════════════════════════════════
+   STUDIO AI CHAT — Floating panel
+   ══════════════════════════════════════════════════════ */
+.chat-fab{position:fixed;bottom:28px;right:28px;z-index:500;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--acc) 0%,#4F5FBE 100%);border:none;cursor:pointer;box-shadow:0 4px 20px rgba(99,118,218,.45);display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .18s,box-shadow .18s;color:#fff}
+.chat-fab:hover{transform:translateY(-2px) scale(1.06);box-shadow:0 8px 28px rgba(99,118,218,.55)}
+.chat-fab.open{background:linear-gradient(135deg,#555 0%,#333 100%);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.chat-unread{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--red);border:2px solid var(--surf);font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;display:none}
+.chat-unread.visible{display:flex}
+
+.chat-panel{position:fixed;bottom:0;right:0;width:390px;height:100vh;background:var(--surf);border-left:1px solid var(--bdr);box-shadow:-8px 0 40px rgba(0,0,0,.12);z-index:499;display:flex;flex-direction:column;transform:translateX(110%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.chat-panel.open{transform:translateX(0)}
+
+.chat-header{padding:16px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0;background:linear-gradient(180deg,var(--surf) 0%,var(--bg) 100%)}
+.chat-header-ico{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--acc) 0%,#4F5FBE 100%);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 3px 10px rgba(99,118,218,.3)}
+.chat-header-info{flex:1;min-width:0}
+.chat-header-title{font-size:14px;font-weight:700;color:var(--txt)}
+.chat-header-sub{font-size:11px;color:var(--tm);margin-top:1px}
+.chat-header-status{width:8px;height:8px;border-radius:50%;background:var(--ok);flex-shrink:0;box-shadow:0 0 6px rgba(61,173,118,.5)}
+.chat-header-status.thinking{background:var(--warn);animation:pulse 1.2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+.chat-close-btn{background:none;border:none;cursor:pointer;padding:5px;border-radius:var(--rs);color:var(--tm);font-size:16px;transition:all .12s;line-height:1}
+.chat-close-btn:hover{background:var(--bdr-l);color:var(--txt)}
+.chat-gear-btn{background:none;border:none;cursor:pointer;padding:5px;border-radius:var(--rs);color:var(--tm);font-size:14px;transition:all .12s;line-height:1;opacity:.6}
+.chat-gear-btn:hover{background:var(--bdr-l);opacity:1}
+
+.chat-messages{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+
+.chat-msg{max-width:88%;display:flex;flex-direction:column;gap:4px;animation:msgIn .18s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{align-self:flex-end;align-items:flex-end}
+.chat-msg.ai{align-self:flex-start;align-items:flex-start}
+.chat-bubble{padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.6;word-break:break-word}
+.chat-msg.user .chat-bubble{background:linear-gradient(135deg,var(--acc) 0%,#4F5FBE 100%);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.ai .chat-bubble{background:var(--bg);border:1px solid var(--bdr);color:var(--txt);border-bottom-left-radius:4px}
+.chat-msg.ai .chat-bubble code{background:rgba(99,118,218,.12);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px}
+.chat-msg.ai .chat-bubble strong{font-weight:700;color:var(--txt)}
+.chat-msg-time{font-size:10px;color:var(--tm);opacity:.6;padding:0 4px}
+.chat-suggestion{font-size:11px;padding:5px 11px;border-radius:999px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;color:var(--tm);transition:all .14s;white-space:nowrap;flex-shrink:0}
+.chat-suggestion:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-l)}
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px}
+
+.chat-typing{display:flex;align-items:center;gap:4px;padding:10px 13px;background:var(--bg);border:1px solid var(--bdr);border-radius:16px;border-bottom-left-radius:4px;width:fit-content}
+.chat-typing span{width:6px;height:6px;border-radius:50%;background:var(--tm);display:block;animation:bounce .9s infinite}
+.chat-typing span:nth-child(2){animation-delay:.18s}
+.chat-typing span:nth-child(3){animation-delay:.36s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+.chat-input-area{padding:12px 14px;border-top:1px solid var(--bdr);flex-shrink:0;background:var(--surf)}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end}
+.chat-inp{flex:1;border:1px solid var(--bdr);border-radius:14px;padding:9px 13px;font-size:13px;font-family:inherit;color:var(--txt);background:var(--bg);outline:none;resize:none;line-height:1.55;max-height:120px;overflow-y:auto;transition:border-color .14s}
+.chat-inp:focus{border-color:var(--acc);background:var(--surf)}
+.chat-inp::placeholder{color:var(--tm);opacity:.6}
+.chat-send-btn{width:36px;height:36px;border-radius:12px;background:var(--acc);border:none;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .14s;align-self:flex-end}
+.chat-send-btn:hover{background:var(--acc2);transform:translateY(-1px)}
+.chat-send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.chat-footer-note{font-size:10px;color:var(--tm);opacity:.5;text-align:center;margin-top:6px}
+
+/* API key setup screen */
+.chat-setup{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;gap:14px;text-align:center}
+.chat-setup-ico{font-size:40px;margin-bottom:4px}
+.chat-setup-title{font-size:16px;font-weight:700;color:var(--txt)}
+.chat-setup-sub{font-size:13px;color:var(--tm);line-height:1.6;max-width:300px}
+.chat-key-inp{width:100%;border:1px solid var(--bdr);border-radius:var(--rs);padding:10px 13px;font-size:13px;font-family:monospace;color:var(--txt);background:var(--bg);outline:none;transition:border-color .14s}
+.chat-key-inp:focus{border-color:var(--acc)}
+.chat-setup-link{font-size:12px;color:var(--acc);text-decoration:none}
+.chat-setup-link:hover{text-decoration:underline}
+.chat-key-err{font-size:12px;color:var(--red);min-height:16px}
+
+/* Context info pill */
+.chat-ctx-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--ok-l);color:var(--ok);border:1px solid rgba(61,173,118,.2);margin-bottom:6px;align-self:center}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] .chat-panel,
+:root[data-theme="system"].sys-dark .chat-panel{background:var(--surf);border-left-color:var(--bdr)}
+:root[data-theme="dark"] .chat-msg.ai .chat-bubble,
+:root[data-theme="system"].sys-dark .chat-msg.ai .chat-bubble{background:#1F2235;border-color:var(--bdr)}
+:root[data-theme="dark"] .chat-inp,
+:root[data-theme="system"].sys-dark .chat-inp{background:#1A1D2E;color:var(--txt)}
+:root[data-theme="dark"] .chat-key-inp,
+:root[data-theme="system"].sys-dark .chat-key-inp{background:#1A1D2E;color:var(--txt)}
+:root[data-theme="dark"] .chat-typing,
+:root[data-theme="system"].sys-dark .chat-typing{background:#1F2235}
+
+/* Mobile */
+@media(max-width:768px){
+  .chat-panel{width:100%;height:70vh;top:auto;bottom:0;left:0;right:0;border-left:none;border-top:1px solid var(--bdr);border-radius:20px 20px 0 0;transform:translateY(110%)}
+  .chat-panel.open{transform:translateY(0)}
+  .chat-fab{bottom:20px;right:20px}
+}
+
 </style>
 </head>
 <body>
@@ -917,6 +1009,57 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 
 <!-- FILE INPUT (hidden) -->
 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="onFileImport(event)">
+
+<!-- ══════════════════════════════════════════════════
+     STUDIO AI CHAT WIDGET
+     ══════════════════════════════════════════════════ -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Ask Studio AI">
+  <span id="chatFabIco">✦</span>
+  <span class="chat-unread" id="chatUnread"></span>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="chat-header-ico">✦</div>
+    <div class="chat-header-info">
+      <div class="chat-header-title">Studio AI</div>
+      <div class="chat-header-sub">Knows all your projects &amp; tasks</div>
+    </div>
+    <div class="chat-header-status" id="chatStatus"></div>
+    <button class="chat-gear-btn" onclick="showChatSetup()" title="API settings">⚙</button>
+    <button class="chat-close-btn" onclick="toggleChat()" title="Close">✕</button>
+  </div>
+
+  <!-- Setup screen (hidden when key is saved) -->
+  <div class="chat-setup" id="chatSetup" style="display:none">
+    <div class="chat-setup-ico">🔑</div>
+    <div class="chat-setup-title">Connect your Anthropic API key</div>
+    <div class="chat-setup-sub">Your key is stored locally in this browser only — it never leaves your device.</div>
+    <input class="chat-key-inp" id="chatKeyInp" type="password"
+      placeholder="sk-ant-api03-…"
+      onkeydown="if(event.key==='Enter')saveChatKey()">
+    <div class="chat-key-err" id="chatKeyErr"></div>
+    <button class="btn btn-primary" onclick="saveChatKey()">Save &amp; Connect</button>
+    <a class="chat-setup-link" href="https://console.anthropic.com/keys" target="_blank" rel="noopener">Get an API key at console.anthropic.com ↗</a>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-messages" id="chatMessages" style="display:none">
+    <!-- populated by JS -->
+  </div>
+
+  <!-- Input area -->
+  <div class="chat-input-area" id="chatInputArea" style="display:none">
+    <div class="chat-input-row">
+      <textarea class="chat-inp" id="chatInp" rows="1" placeholder="Ask about projects, tasks, deadlines…"
+        oninput="autoGrow(this)"
+        onkeydown="onChatKey(event)"></textarea>
+      <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()" title="Send">↑</button>
+    </div>
+    <div class="chat-footer-note">Powered by Claude · Context: all your live Studio W data</div>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -3385,6 +3528,361 @@ async function checkAuth() {
     setLockHelp('This browser blocked local storage, so your login state could not be read.')
     setBootMessage('This browser blocked local storage, so the app could not read your saved login state.',true)
   }
+}
+
+// ══════════════════════════════════════════════════════
+//  STUDIO AI CHAT
+// ══════════════════════════════════════════════════════
+const CHAT_KEY_STORE = 'studio_ai_key'
+const CHAT_MODEL = 'claude-haiku-4-5-20251001'
+let chatOpen = false
+let chatBusy = false
+let chatHistory = []   // [{role:'user'|'assistant', content:'...'}]
+
+// ── Key management ─────────────────────────────────────
+function getChatKey(){ return safeStorageGet(CHAT_KEY_STORE)||'' }
+
+function saveChatKey(){
+  const k = (document.getElementById('chatKeyInp')?.value||'').trim()
+  const err = document.getElementById('chatKeyErr')
+  if(!k.startsWith('sk-ant-')){
+    if(err)err.textContent='Key should start with sk-ant-…'
+    return
+  }
+  safeStorageSet(CHAT_KEY_STORE, k)
+  if(err)err.textContent=''
+  initChatUI()
+}
+
+// ── Open / Close ────────────────────────────────────────
+function toggleChat(){
+  chatOpen = !chatOpen
+  const panel = document.getElementById('chatPanel')
+  const fab   = document.getElementById('chatFab')
+  const ico   = document.getElementById('chatFabIco')
+  panel.classList.toggle('open', chatOpen)
+  fab.classList.toggle('open', chatOpen)
+  ico.textContent = chatOpen ? '✕' : '✦'
+  document.getElementById('chatUnread')?.classList.remove('visible')
+  if(chatOpen) initChatUI()
+}
+
+function showChatSetup(){
+  document.getElementById('chatSetup').style.display  = 'flex'
+  document.getElementById('chatMessages').style.display = 'none'
+  document.getElementById('chatInputArea').style.display = 'none'
+  setTimeout(()=>document.getElementById('chatKeyInp')?.focus(), 80)
+}
+
+function initChatUI(){
+  const key = getChatKey()
+  const setup  = document.getElementById('chatSetup')
+  const msgs   = document.getElementById('chatMessages')
+  const inp    = document.getElementById('chatInputArea')
+  if(!key){
+    setup.style.display = 'flex'
+    msgs.style.display  = 'none'
+    inp.style.display   = 'none'
+  } else {
+    setup.style.display = 'none'
+    msgs.style.display  = 'flex'
+    inp.style.display   = 'block'
+    if(chatHistory.length === 0) renderWelcome()
+    setTimeout(()=>document.getElementById('chatInp')?.focus(), 80)
+  }
+}
+
+// ── Welcome screen ──────────────────────────────────────
+function renderWelcome(){
+  const activeProjs = allActiveProjects().length
+  const overdue     = computeAlerts().overdue.length
+  const travelCount = allTravelItems().length
+  const suggestions = [
+    'What projects are overdue or at risk?',
+    'Give me a full status summary',
+    "What's Pierre working on?",
+    'Any upcoming travel I should know about?',
+    'Which tasks are due this week?',
+    'Draft a project status update email',
+  ]
+  appendChatHTML(`
+    <div style="align-self:center">
+      <div class="chat-ctx-pill">📊 ${activeProjs} projects · ${overdue} overdue · ${travelCount} travel items loaded</div>
+    </div>
+    <div class="chat-msg ai">
+      <div class="chat-bubble">
+        <strong>Hi! I'm your Studio AI.</strong><br>
+        I have full context on all your active projects, tasks, deadlines, travel logistics, and team assignments. Ask me anything — I'll give you specific answers from your real data.
+      </div>
+    </div>
+    <div class="chat-suggestions">
+      ${suggestions.map(s=>`<button class="chat-suggestion" onclick="useSuggestion(this)">${esc(s)}</button>`).join('')}
+    </div>`)
+  scrollChat()
+}
+
+function useSuggestion(btn){
+  const text = btn.textContent
+  document.querySelectorAll('.chat-suggestions').forEach(el=>el.remove())
+  const inp = document.getElementById('chatInp')
+  if(inp){ inp.value = text; autoGrow(inp) }
+  sendChat()
+}
+
+// ── Context builder ─────────────────────────────────────
+function buildAIContext(){
+  const today = todayIso()
+  const lines = [
+    `Today's date: ${today}`,
+    ``,
+    `# Studio W — Complete Project Data`,
+    ``
+  ]
+
+  for(const m of state.members){
+    lines.push(`## ${m.name}${m.isMe?' (app owner)':''}`)
+    let hasContent = false
+    for(const b of m.brands){
+      const active = b.projects.filter(p=>p.status!=='archived')
+      if(!active.length) continue
+      hasContent = true
+      lines.push(`### Brand: ${b.name}`)
+      for(const p of active){
+        lines.push(`#### Project: "${p.name}"`)
+        if(p.summary) lines.push(`  Summary: ${p.summary}`)
+        if(p.startDate||p.endDate) lines.push(`  Timeline: ${p.startDate||'?'} → ${p.endDate||'?'}`)
+
+        // Tasks
+        const tasks = p.tasks||[]
+        if(tasks.length){
+          lines.push(`  Tasks (${tasks.length}):`)
+          for(const t of tasks){
+            const prog = t.progress||'not-started'
+            const isOverdue = t.dueDate && t.dueDate<today && prog!=='completed'
+            let row = `    - [${prog}${isOverdue?' ⚠OVERDUE':''}] ${t.text}`
+            if(t.startDate) row+=` | start:${t.startDate}`
+            if(t.dueDate)   row+=` | due:${t.dueDate}`
+            if(t.note)      row+=` | note: "${t.note}"`
+            lines.push(row)
+          }
+        }
+
+        // Meetings
+        const meetings = (p.meetings||[]).filter(mt=>mt.date)
+        if(meetings.length){
+          lines.push(`  Meetings:`)
+          for(const mt of meetings){
+            lines.push(`    - ${mt.title} (${mt.date})`)
+          }
+        }
+
+        // Travel
+        const travel = p.travel||[]
+        if(travel.length){
+          lines.push(`  Travel & Logistics:`)
+          for(const tr of travel){
+            let row = `    - [${tr.type}] ${tr.title}`
+            if(tr.startDate) row+=` | ${tr.startDate}${tr.endDate&&tr.endDate!==tr.startDate?` to ${tr.endDate}`:''}`
+            if(tr.link) row+=` | ${tr.link}`
+            lines.push(row)
+          }
+        }
+
+        // Notes (titles + body snippet)
+        const notes = p.notes||[]
+        if(notes.length){
+          lines.push(`  Notes (${notes.length}):`)
+          for(const n of notes.slice(0,8)){
+            const body = stripHtml(n.body||'').slice(0,400)
+            lines.push(`    - "${n.title}" [${n.date}]${body?' — '+body:''}`)
+          }
+        }
+        lines.push(``)
+      }
+    }
+    if(!hasContent) lines.push(`  (no active projects)\n`)
+  }
+
+  return lines.join('\n')
+}
+
+// ── Send message ────────────────────────────────────────
+async function sendChat(){
+  const inp  = document.getElementById('chatInp')
+  const text = (inp?.value||'').trim()
+  if(!text || chatBusy) return
+  const key  = getChatKey()
+  if(!key){ showChatSetup(); return }
+
+  inp.value = ''
+  inp.style.height = 'auto'
+  document.querySelectorAll('.chat-suggestions').forEach(el=>el.remove())
+
+  // Show user bubble
+  appendChatHTML(`<div class="chat-msg user">
+    <div class="chat-bubble">${esc(text).replace(/\n/g,'<br>')}</div>
+    <div class="chat-msg-time">${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+  </div>`)
+
+  // Add to history
+  chatHistory.push({role:'user', content:text})
+
+  // Show typing
+  const typingId = 'ct_'+Date.now()
+  appendChatHTML(`<div class="chat-msg ai" id="${typingId}">
+    <div class="chat-typing"><span></span><span></span><span></span></div>
+  </div>`)
+  scrollChat()
+  setChatBusy(true)
+
+  // Build messages array — inject context as first system message
+  const context = buildAIContext()
+  const systemPrompt = `You are Studio AI, an intelligent assistant embedded inside Studio W — a project management app for a fashion and product development studio.
+
+You have COMPLETE real-time access to all project data below. Use it to give specific, accurate answers.
+
+When answering:
+- Reference actual project names, task names, people, and dates from the data
+- For dates, calculate relative context (e.g. "3 days overdue", "due next Thursday") using today's date
+- Be concise but complete — use bullet points for lists
+- If asked to draft content (email, update, summary), do so using actual project details
+- Render simple markdown: **bold**, bullet lists with -
+
+LIVE STUDIO W DATA:
+${context}`
+
+  // Keep last 20 turns for context window efficiency
+  const msgs = chatHistory.slice(-20)
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: msgs,
+        stream: true,
+      }),
+    })
+
+    if(!resp.ok){
+      const errText = await resp.text()
+      let msg = `API error ${resp.status}`
+      try{ const j=JSON.parse(errText); msg=j.error?.message||msg }catch{}
+      if(resp.status===401) msg='Invalid API key — click ⚙ to update it.'
+      removeChatEl(typingId)
+      appendErrorBubble(msg)
+      setChatBusy(false)
+      return
+    }
+
+    // Stream the response
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let aiText = ''
+    let buffer = ''
+
+    // Replace typing indicator with empty AI bubble
+    removeChatEl(typingId)
+    const aiMsgId = 'ca_'+Date.now()
+    appendChatHTML(`<div class="chat-msg ai" id="${aiMsgId}">
+      <div class="chat-bubble" id="${aiMsgId}_b"></div>
+      <div class="chat-msg-time">${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    </div>`)
+    const bubbleEl = document.getElementById(aiMsgId+'_b')
+
+    while(true){
+      const {done, value} = await reader.read()
+      if(done) break
+      buffer += decoder.decode(value, {stream:true})
+      const lines = buffer.split('\n')
+      buffer = lines.pop()||''
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if(data==='[DONE]') continue
+        try{
+          const evt = JSON.parse(data)
+          if(evt.type==='content_block_delta'&&evt.delta?.type==='text_delta'){
+            aiText += evt.delta.text
+            if(bubbleEl) bubbleEl.innerHTML = formatChatMarkdown(aiText)
+            scrollChat()
+          }
+        }catch{}
+      }
+    }
+
+    // Final render & save to history
+    if(bubbleEl) bubbleEl.innerHTML = formatChatMarkdown(aiText)
+    chatHistory.push({role:'assistant', content:aiText})
+    scrollChat()
+
+  } catch(e){
+    removeChatEl(typingId)
+    appendErrorBubble('Network error — check your connection and try again.')
+    console.error('Chat error:', e)
+  }
+
+  setChatBusy(false)
+}
+
+// ── Markdown formatter (lightweight) ───────────────────
+function formatChatMarkdown(text){
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>')
+    .replace(/<\/ul>\s*<ul>/g,'')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>')
+}
+
+// ── UI helpers ──────────────────────────────────────────
+function appendChatHTML(html){
+  const el = document.getElementById('chatMessages')
+  if(!el) return
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  while(tmp.firstChild) el.appendChild(tmp.firstChild)
+}
+
+function removeChatEl(id){
+  document.getElementById(id)?.remove()
+}
+
+function appendErrorBubble(msg){
+  appendChatHTML(`<div class="chat-msg ai">
+    <div class="chat-bubble" style="border-color:var(--red);color:var(--red)">⚠ ${esc(msg)}</div>
+  </div>`)
+  scrollChat()
+}
+
+function scrollChat(){
+  const el = document.getElementById('chatMessages')
+  if(el) el.scrollTop = el.scrollHeight
+}
+
+function setChatBusy(busy){
+  chatBusy = busy
+  const btn    = document.getElementById('chatSendBtn')
+  const status = document.getElementById('chatStatus')
+  const inp    = document.getElementById('chatInp')
+  if(btn)    btn.disabled = busy
+  if(inp)    inp.disabled = busy
+  if(status) status.classList.toggle('thinking', busy)
+}
+
+function onChatKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat() }
 }
 
 // ══════════════════════════════════════════════════════
