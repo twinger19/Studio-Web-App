@@ -1,0 +1,242 @@
+{
+  "members": [
+    {
+      "id": "mnuy76qzjt0m",
+      "isMe": true,
+      "name": "Me",
+      "color": "#6376DA",
+      "brands": [
+        {
+          "id": "mnuy76qzrtyw",
+          "name": "My Projects",
+          "projects": []
+        },
+        {
+          "id": "mnuy85d8fsl6",
+          "name": "Meetings",
+          "projects": [
+            {
+              "id": "mnuyj82q9pf5",
+              "name": "RMM",
+              "links": [],
+              "notes": [],
+              "tasks": [
+                {
+                  "id": "mnuzovbrinlm",
+                  "done": true,
+                  "text": "Fly to Cinci",
+                  "dueDate": "2026-04-14",
+                  "progress": "completed",
+                  "startDate": ""
+                },
+                {
+                  "id": "mnvyy181szwp",
+                  "done": true,
+                  "text": "Book Flight to RMM",
+                  "dueDate": "2026-04-16",
+                  "progress": "completed",
+                  "startDate": "2026-04-14"
+                },
+                {
+                  "id": "mnvyz8865y4u",
+                  "done": false,
+                  "text": "Prep work for Jeffrey's project - Iran Conflict",
+                  "dueDate": "",
+                  "progress": "in-progress",
+                  "startDate": "2026-04-14"
+                }
+              ],
+              "status": "active",
+              "endDate": "2026-04-16",
+              "summary": "RMM Cincinnati ",
+              "meetings": [
+                {
+                  "id": "mnuyl2wq4jji",
+                  "date": "2026-04-14",
+                  "title": "RMM CINCI"
+                }
+              ],
+              "startDate": "2026-04-14",
+              "travel": []
+            },
+            {
+              "id": "mnvzd12oocou",
+              "name": "Belt Strategy Meeting",
+              "links": [
+                {
+                  "id": "mnvzf3wnisfn",
+                  "url": "https://randanet.sharepoint.com/:w:/s/RAASales/IQAEz6b7l0V4S5690onKJBn3AVS-kG1ibaAtgQO0exeneR8",
+                  "label": "MEETING DOCS"
+                }
+              ],
+              "notes": [],
+              "tasks": [],
+              "status": "active",
+              "endDate": "",
+              "summary": "",
+              "meetings": [
+                {
+                  "id": "mnvzeqq4g8mw",
+                  "date": "2026-04-23",
+                  "title": "Belt Strategy Meeting - 9AM - 12:30 EST"
+                }
+              ],
+              "startDate": "",
+              "travel": []
+            }
+          ]
+        },
+        {
+          "id": "mnvyw3zcscti",
+          "name": "Travel",
+          "projects": [
+            {
+              "id": "mnvz0c3u2g98",
+              "name": "New York - Belt Strategy Meeting",
+              "links": [],
+              "notes": [],
+              "tasks": [
+                {
+                  "id": "mnvz4x9nhsyz",
+                  "done": true,
+                  "text": "Book Flight with Mendel",
+                  "dueDate": "2026-04-23",
+                  "progress": "completed",
+                  "startDate": "2026-04-22"
+                }
+              ],
+              "status": "archived",
+              "endDate": "2026-04-23",
+              "summary": "",
+              "meetings": [],
+              "startDate": "2026-04-22",
+              "travel": []
+            },
+            {
+              "id": "mnvza2lu1p2f",
+              "name": "Columbia Licensing Meeting",
+              "links": [],
+              "notes": [],
+              "tasks": [
+                {
+                  "id": "mnvzbxyu4y0z",
+                  "done": false,
+                  "text": "Book Flight & Hotel",
+                  "dueDate": "2026-04-30",
+                  "progress": "not-started",
+                  "startDate": "2026-04-28"
+                }
+              ],
+              "status": "active",
+              "endDate": "2026-04-30",
+              "summary": "Columbia Licensing Meeting - 4/29 AM. Need to arrive day before and leave morning of 30th. ",
+              "meetings": [
+                {
+                  "id": "mnvzbi330iha",
+                  "date": "2026-04-29",
+                  "title": "Columbia Licensing Meeting"
+                }
+              ],
+              "startDate": "2026-04-28",
+              "travel": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mnuy76qza649",
+      "isMe": false,
+      "name": "Pierre",
+      "color": "#E88B6D",
+      "brands": [
+        {
+          "id": "mnuy76qzs2bl",
+          "name": "Cole Haan",
+          "projects": [
+            {
+              "id": "mnuy76qzn3rm",
+              "name": "Cole Haan Spring 2027",
+              "links": [],
+              "notes": [],
+              "tasks": [],
+              "status": "active",
+              "endDate": "",
+              "summary": "",
+              "meetings": [
+                {
+                  "id": "mnuymkvdiqt4",
+                  "date": "2026-04-30",
+                  "title": "MID POINT"
+                }
+              ],
+              "startDate": "",
+              "travel": []
+            },
+            {
+              "id": "mnuy7uag5rso",
+              "name": "Cole Haan Fall 2027",
+              "links": [],
+              "notes": [
+                {
+                  "id": "mnuzpagx8nd4",
+                  "body": "",
+                  "date": "Apr 11, 2026",
+                  "open": true,
+                  "title": "New Note"
+                }
+              ],
+              "tasks": [],
+              "status": "active",
+              "endDate": "",
+              "summary": "",
+              "meetings": [],
+              "startDate": "",
+              "travel": []
+            }
+          ]
+        },
+        {
+          "id": "mnuy76qzpq5v",
+          "name": "Haggar",
+          "projects": []
+        },
+        {
+          "id": "mnuy76qzqz87",
+          "name": "Dockers",
+          "projects": []
+        }
+      ]
+    },
+    {
+      "id": "mnuy76qzz4u6",
+      "isMe": false,
+      "name": "Rebecca",
+      "color": "#6DB8E8",
+      "brands": []
+    },
+    {
+      "id": "mnuy76qzjlsn",
+      "isMe": false,
+      "name": "Puma",
+      "color": "#9B6DE8",
+      "brands": []
+    },
+    {
+      "id": "mnuy76qzhp80",
+      "isMe": false,
+      "name": "Sarah",
+      "color": "#50C08A",
+      "brands": []
+    },
+    {
+      "id": "mnuy76qzmfzy",
+      "isMe": false,
+      "name": "Michelle",
+      "color": "#E8CC5A",
+      "brands": []
+    }
+  ],
+  "version": "2.0",
+  "showArchived": false
+}

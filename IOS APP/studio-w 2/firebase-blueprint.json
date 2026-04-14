@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A project containing tasks, notes, etc.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "brandId": { "type": "string" },
+        "memberId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "summary": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "text": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "dueDate": { "type": "string", "format": "date" },
+        "progress": { "type": "string", "enum": ["not-started", "in-progress", "completed"] },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "projectId", "ownerId", "progress"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A note within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "date": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "projectId", "ownerId"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "A meeting within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "projectId", "ownerId"]
+    },
+    "Travel": {
+      "title": "Travel",
+      "description": "Travel logistics within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Flight", "Hotel", "Factory Contact"] },
+        "title": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "projectId", "ownerId", "type"]
+    },
+    "Link": {
+      "title": "Link",
+      "description": "A link within a project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "label": { "type": "string" },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["label", "url", "projectId", "ownerId"]
+    },
+    "Brand": {
+      "title": "Brand",
+      "description": "A brand or client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "memberId": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "ownerId", "memberId"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "A team member or workspace section",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "isMe": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "ownerId", "color"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/members/{memberId}": { "schema": "Member", "description": "Workspace members/sections" },
+    "/brands/{brandId}": { "schema": "Brand", "description": "Brands or clients" },
+    "/projects/{projectId}": { "schema": "Project", "description": "Projects" },
+    "/tasks/{taskId}": { "schema": "Task", "description": "Tasks" },
+    "/notes/{noteId}": { "schema": "Note", "description": "Notes" },
+    "/meetings/{meetingId}": { "schema": "Meeting", "description": "Meetings" },
+    "/travel/{travelId}": { "schema": "Travel", "description": "Travel items" },
+    "/links/{linkId}": { "schema": "Link", "description": "Links" }
+  }
+}
