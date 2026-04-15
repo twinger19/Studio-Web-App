@@ -35,7 +35,7 @@
     <button class="sb-foot-btn" onclick="showView('allcal')">
       <span>📅</span><span>All Teams Calendar</span>
     </button>
-    <button class="sb-foot-btn" onclick="showView('today')">
+    <button class="sb-foot-btn" onclick="setScope('today')">
       <span>📆</span><span>Today's Focus</span>
     </button>
 
@@ -170,6 +170,50 @@
   </div>
 </div>
 
+
+<!-- COMMAND BAR OVERLAY (Cmd+K) -->
+<div class="cmdbar-ov" id="cmdbarOv" style="display:none" onclick="if(event.target===this)closeCmdBar()">
+  <div class="cmdbar-box">
+    <div class="cmdbar-inp-wrap">
+      <span class="cmdbar-ico">⌘K</span>
+      <input class="cmdbar-inp" id="cmdbarInp" placeholder="Quick add a task, or try @name, /today, /overdue…"
+        oninput="onCmdBarInput(event)" onkeydown="onCmdBarKey(event)" autocomplete="off">
+    </div>
+    <div class="cmdbar-hint" id="cmdbarHint"></div>
+    <div class="cmdbar-legend">
+      <span><kbd>tomorrow</kbd> <kbd>monday</kbd> sets due</span>
+      <span><kbd>urgent</kbd> <kbd>high</kbd> sets priority</span>
+      <span><kbd>@name</kbd> assigns</span>
+      <span><kbd>/today</kbd> <kbd>/overdue</kbd> <kbd>/week</kbd> jumps scope</span>
+    </div>
+  </div>
+</div>
+
+<!-- BULK ACTION BAR -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-count" id="bulkCount">0 selected</span>
+  <div class="bulk-sep"></div>
+  <select class="bulk-sel" onchange="if(this.value){bulkSetProgress(this.value);this.value=''}">
+    <option value="">Set status…</option>
+    <option value="not-started">Not Started</option>
+    <option value="in-progress">In Progress</option>
+    <option value="completed">Completed</option>
+  </select>
+  <select class="bulk-sel" onchange="if(this.value){bulkSetPriority(this.value==='_none'?'':this.value);this.value=''}">
+    <option value="">Set priority…</option>
+    <option value="urgent">🔴 Urgent</option>
+    <option value="high">🟠 High</option>
+    <option value="medium">🔵 Medium</option>
+    <option value="low">⚪ Low</option>
+    <option value="_none">Clear priority</option>
+  </select>
+  <select class="bulk-sel" id="bulkAssignSel" onchange="if(this.value!=='__'){bulkSetAssignee(this.value==='_none'?'':this.value);this.value='__'}">
+    <option value="__">Assign…</option>
+  </select>
+  <input type="date" class="bulk-date" title="Set due date for selected" onchange="if(this.value){bulkSetDue(this.value);this.value=''}">
+  <button class="btn btn-danger btn-sm" onclick="bulkDelete()">Delete</button>
+  <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Cancel</button>
+</div>
 
 <!-- UNDO TOAST -->
 <div class="undo-toast" id="undoToast">

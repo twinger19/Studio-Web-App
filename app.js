@@ -224,7 +224,7 @@ function save() {
 }
 
 let selId=null          // selected project id
-let viewMode='home'     // 'home'|'detail'|'calendar'|'sync'|'allcal'|'globaltasks'
+let viewMode='worklist' // 'worklist'|'home'|'detail'|'calendar'|'sync'|'allcal'|'globaltasks'|'today'
 let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
@@ -241,6 +241,17 @@ let openBrands=new Set()
 let modalCb=null
 let modalType=null
 let modalCtx=null
+
+// ── WORK LIST / OVERHAUL STATE ─────────────────────────────
+let viewScope = {type:'today'}      // {type:'all'|'today'|'overdue'|'thisweek'|'nodate'|'assignee'|'member'|'brand'|'project', id?}
+let wlGroupBy = 'project'           // 'project'|'due'|'assignee'|'priority'|'none'
+let wlFilter = ''                   // text filter
+let wlSortBy = 'due'                // 'due'|'priority'|'title'
+let wlShowDone = false
+let selectedTaskIds = new Set()     // Set of "pid::tid" strings for multi-select
+let cmdBarOpen = false
+let cmdBarCtx = null                // optional context when opening cmd bar
+
 
 // ══════════════════════════════════════════════════════
 //  FINDERS
@@ -432,6 +443,25 @@ function renderSidebar(){
     h+=`</div>`
   }
 
+  // Scope chips (work list entry points)
+  const countToday=countTasksForScope('today'), countOverdue=countTasksForScope('overdue'), countWeek=countTasksForScope('thisweek'), countAll=countTasksForScope('all')
+  const scopeOn=t=>viewMode==='worklist' && viewScope.type===t && !viewScope.id
+  h+=`<div class="sb-lbl">Work</div>
+    <div class="sb-scopes">
+      <button class="sb-scope-btn ${scopeOn('today')?'on':''}" onclick="setScope('today')">
+        <span class="sb-scope-ico">📆</span><span class="sb-scope-lbl">Today</span>${countToday?`<span class="sb-scope-ct">${countToday}</span>`:''}
+      </button>
+      <button class="sb-scope-btn ${scopeOn('overdue')?'on':''}" onclick="setScope('overdue')">
+        <span class="sb-scope-ico" style="color:var(--red)">●</span><span class="sb-scope-lbl">Overdue</span>${countOverdue?`<span class="sb-scope-ct" style="background:var(--red-l);color:var(--red)">${countOverdue}</span>`:''}
+      </button>
+      <button class="sb-scope-btn ${scopeOn('thisweek')?'on':''}" onclick="setScope('thisweek')">
+        <span class="sb-scope-ico">📅</span><span class="sb-scope-lbl">This Week</span>${countWeek?`<span class="sb-scope-ct">${countWeek}</span>`:''}
+      </button>
+      <button class="sb-scope-btn ${scopeOn('all')?'on':''}" onclick="setScope('all')">
+        <span class="sb-scope-ico">∞</span><span class="sb-scope-lbl">All Open</span>${countAll?`<span class="sb-scope-ct">${countAll}</span>`:''}
+      </button>
+    </div>`
+
   // Me
   const me=state.members.find(m=>m.isMe)
   if(me){h+=`<div class="sb-lbl">Me</div>`;h+=renderMember(me)}
@@ -564,6 +594,15 @@ function renderMain(){
   const acts=document.getElementById('tbActions')
   const vt=document.getElementById('viewToggle')
 
+  if(viewMode==='worklist'){
+    vt.style.display='none'
+    bc.innerHTML=`<span class="bc-cur">${scopeLabel()}</span>`
+    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="openCmdBar()" title="Quick add (Cmd+K)">⌘K Quick add</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('home')" title="Dashboard">🏠 Dashboard</button>`
+    content.innerHTML=renderWorkList()
+    return
+  }
+
   if(viewMode==='home'){
     vt.style.display='none'
     bc.innerHTML=`<span class="bc-cur">Studio W</span>`
@@ -635,6 +674,496 @@ function renderMain(){
     document.querySelectorAll('.task-txt').forEach(autoGrow)
   }
 }
+
+
+// ══════════════════════════════════════════════════════
+//  WORK LIST VIEW — unified task workbench
+// ══════════════════════════════════════════════════════
+function scopeLabel(){
+  const s=viewScope||{type:'all'}
+  if(s.type==='today')return "Today's Focus"
+  if(s.type==='overdue')return 'Overdue'
+  if(s.type==='thisweek')return 'This Week'
+  if(s.type==='nodate')return 'No Due Date'
+  if(s.type==='all')return 'All Open Tasks'
+  if(s.type==='assignee'){
+    const m=state.members.find(mx=>mx.id===s.id);return m?`Assigned to ${m.name}`:'Assigned'
+  }
+  if(s.type==='member'){
+    const m=state.members.find(mx=>mx.id===s.id);return m?`${m.name}'s Work`:'Member'
+  }
+  if(s.type==='brand'){
+    for(const m of state.members)for(const b of m.brands)if(b.id===s.id)return `Brand · ${b.name}`
+    return 'Brand'
+  }
+  if(s.type==='project'){
+    const f=findProject(s.id);return f?`Project · ${f.p.name}`:'Project'
+  }
+  return 'Work List'
+}
+
+function scopedTasks(){
+  const today=todayIso()
+  const eow=isoDate(new Date(new Date(today+'T00:00:00').setDate(new Date(today+'T00:00:00').getDate()+7)))
+  const s=viewScope||{type:'all'}
+  const out=[]
+  for(const m of state.members){
+    for(const b of m.brands){
+      for(const p of b.projects){
+        if(p.status==='archived')continue
+        if(s.type==='member' && m.id!==s.id)continue
+        if(s.type==='brand' && b.id!==s.id)continue
+        if(s.type==='project' && p.id!==s.id)continue
+        for(const t of p.tasks){
+          const prog=t.progress||'not-started'
+          const done=prog==='completed'
+          if(done && !wlShowDone)continue
+          if(s.type==='today' && t.dueDate!==today)continue
+          if(s.type==='overdue' && !(t.dueDate && t.dueDate<today && !done))continue
+          if(s.type==='thisweek' && !(t.dueDate && t.dueDate>=today && t.dueDate<=eow))continue
+          if(s.type==='nodate' && t.dueDate)continue
+          if(s.type==='assignee' && t.assignee!==s.id)continue
+          if(wlFilter){
+            const q=wlFilter.toLowerCase()
+            const hay=(t.text+' '+p.name+' '+b.name+' '+m.name).toLowerCase()
+            if(!hay.includes(q))continue
+          }
+          out.push({t,p,b,m})
+        }
+      }
+    }
+  }
+  // Sort
+  const prioOrder={urgent:0,high:1,medium:2,low:3,'':4}
+  out.sort((a,b)=>{
+    if(wlSortBy==='priority'){
+      const d=(prioOrder[a.t.priority||'']??4)-(prioOrder[b.t.priority||'']??4)
+      if(d!==0)return d
+    }
+    if(wlSortBy==='title'){
+      return (a.t.text||'').localeCompare(b.t.text||'')
+    }
+    // due
+    return (a.t.dueDate||'9999').localeCompare(b.t.dueDate||'9999')
+  })
+  return out
+}
+
+function renderWorkList(){
+  const tasks=scopedTasks()
+  const totalAll=tasks.length
+  const totalOverdue=tasks.filter(x=>x.t.dueDate && x.t.dueDate<todayIso() && (x.t.progress||'')!=='completed').length
+
+  // Group tasks
+  const groups={}
+  const groupOrder=[]
+  function addTo(key,label,item){
+    if(!groups[key]){groups[key]={label,items:[]};groupOrder.push(key)}
+    groups[key].items.push(item)
+  }
+  if(wlGroupBy==='project'){
+    tasks.forEach(it=>addTo('p_'+it.p.id,`${it.m.name} · ${it.b.name} · ${it.p.name}`,it))
+  } else if(wlGroupBy==='due'){
+    const today=todayIso()
+    tasks.forEach(it=>{
+      let k='nodate',lbl='No due date'
+      if(it.t.dueDate){
+        if(it.t.dueDate<today){k='overdue';lbl='Overdue'}
+        else if(it.t.dueDate===today){k='today';lbl='Today'}
+        else{
+          const diff=Math.round((new Date(it.t.dueDate)-new Date(today+'T00:00:00'))/864e5)
+          if(diff<=7){k='week';lbl='This week'}
+          else if(diff<=30){k='month';lbl='This month'}
+          else{k='later';lbl='Later'}
+        }
+      }
+      addTo(k,lbl,it)
+    })
+  } else if(wlGroupBy==='assignee'){
+    tasks.forEach(it=>{
+      const m=state.members.find(mx=>mx.id===it.t.assignee)
+      const k=m?'a_'+m.id:'a_none'
+      addTo(k,m?m.name:'Unassigned',it)
+    })
+  } else if(wlGroupBy==='priority'){
+    const labels={urgent:'🔴 Urgent',high:'🟠 High',medium:'🔵 Medium',low:'⚪ Low','':'No priority'}
+    tasks.forEach(it=>{
+      const k='pr_'+(it.t.priority||'none')
+      addTo(k,labels[it.t.priority||''],it)
+    })
+  } else {
+    tasks.forEach(it=>addTo('all','All',it))
+  }
+
+  // Scope chips row
+  const scopes=[
+    {type:'today',label:"Today",count:countTasksForScope('today')},
+    {type:'overdue',label:'Overdue',count:countTasksForScope('overdue')},
+    {type:'thisweek',label:'This Week',count:countTasksForScope('thisweek')},
+    {type:'all',label:'All Open',count:countTasksForScope('all')},
+    {type:'nodate',label:'No Date',count:countTasksForScope('nodate')}
+  ]
+  const isActiveScope=sc=>viewScope.type===sc.type && !viewScope.id
+
+  // Quick-add inline
+  const projOpts=allActiveProjects().map(({p,b,m})=>
+    `<option value="${esc(p.id)}">[${esc(m.name)}] ${esc(p.name)}</option>`
+  ).join('')
+
+  return `<div class="wl">
+    <div class="wl-header">
+      <div class="wl-title-row">
+        <h1 class="wl-title">${scopeLabel()}</h1>
+        <div class="wl-title-meta">${totalAll} task${totalAll===1?'':'s'}${totalOverdue?` · <strong style="color:var(--red)">${totalOverdue} overdue</strong>`:''}</div>
+      </div>
+      <div class="wl-scope-chips">
+        ${scopes.map(sc=>`<button class="wl-chip ${isActiveScope(sc)?'on':''}" onclick="setScope('${sc.type}')">${esc(sc.label)}${sc.count?`<span class="wl-chip-ct">${sc.count}</span>`:''}</button>`).join('')}
+      </div>
+      <div class="wl-toolbar">
+        <input class="wl-filter" placeholder="Filter…  (press /)" value="${esc(wlFilter)}" oninput="setWlFilter(this.value)" onkeydown="if(event.key==='Escape'){this.value='';setWlFilter('')}">
+        <label class="wl-tool-lbl">Group:</label>
+        <select class="wl-sel" onchange="setWlGroup(this.value)">
+          <option value="project" ${wlGroupBy==='project'?'selected':''}>Project</option>
+          <option value="due" ${wlGroupBy==='due'?'selected':''}>Due date</option>
+          <option value="assignee" ${wlGroupBy==='assignee'?'selected':''}>Assignee</option>
+          <option value="priority" ${wlGroupBy==='priority'?'selected':''}>Priority</option>
+          <option value="none" ${wlGroupBy==='none'?'selected':''}>None</option>
+        </select>
+        <label class="wl-tool-lbl">Sort:</label>
+        <select class="wl-sel" onchange="setWlSort(this.value)">
+          <option value="due" ${wlSortBy==='due'?'selected':''}>Due date</option>
+          <option value="priority" ${wlSortBy==='priority'?'selected':''}>Priority</option>
+          <option value="title" ${wlSortBy==='title'?'selected':''}>Title</option>
+        </select>
+        <label class="wl-check"><input type="checkbox" ${wlShowDone?'checked':''} onchange="setWlShowDone(this.checked)"> Show completed</label>
+        <button class="btn btn-primary btn-sm" onclick="openCmdBar()" title="Cmd+K">＋ Quick add</button>
+      </div>
+    </div>
+    ${totalAll===0?`<div class="empty"><div class="empty-ico">✨</div><div class="empty-ttl">No tasks in this scope</div><div class="empty-sub">Press <kbd>⌘K</kbd> to quick add a task.</div></div>`:`
+    <div class="wl-body">
+      ${groupOrder.map(k=>{
+        const g=groups[k]
+        return `<div class="wl-group">
+          <div class="wl-group-head">
+            <span class="wl-group-title">${esc(g.label)}</span>
+            <span class="wl-group-count">${g.items.length}</span>
+          </div>
+          <div class="wl-group-list">
+            ${g.items.map(renderWlRow).join('')}
+          </div>
+        </div>`
+      }).join('')}
+    </div>`}
+  </div>`
+}
+
+function renderWlRow({t,p,b,m}){
+  const today=todayIso()
+  const prog=t.progress||'not-started'
+  const prio=t.priority||''
+  const key=p.id+'::'+t.id
+  const selected=selectedTaskIds.has(key)
+  let dc=''
+  if(t.dueDate && prog!=='completed'){
+    if(t.dueDate<today)dc='date-over'
+    else{const diff=(new Date(t.dueDate)-new Date(today+'T00:00:00'))/864e5;if(diff<=3)dc='date-soon'}
+  }
+  const assignee=state.members.find(mx=>mx.id===t.assignee)
+  return `<div class="wl-row ${selected?'selected':''} ${prog}" data-key="${esc(key)}" onclick="onWlRowClick(event,'${esc(p.id)}','${esc(t.id)}')">
+    <input type="checkbox" class="wl-sel-chk" ${selected?'checked':''} onclick="event.stopPropagation();toggleTaskSelect('${esc(p.id)}','${esc(t.id)}')">
+    <input type="checkbox" class="wl-done-chk" ${prog==='completed'?'checked':''} onclick="event.stopPropagation()" onchange="toggleTaskGlobal('${esc(t.id)}','${esc(p.id)}',this.checked)">
+    <div class="wl-main">
+      <div class="wl-txt ${prog==='completed'?'done':''}">${esc(t.text)}</div>
+      <div class="wl-meta">
+        <span class="wl-proj-chip" onclick="event.stopPropagation();goProject('${esc(p.id)}')" title="Open project">
+          <span class="wl-dot" style="background:${m.color}"></span>${esc(p.name)}
+        </span>
+        ${t.dueDate?`<span class="wl-due ${dc}">${t.dueDate<today && prog!=='completed'?'Overdue · ':''}${esc(friendly(t.dueDate))}</span>`:'<span class="wl-due nodate">No date</span>'}
+        ${prio?`<span class="wl-prio prio-${prio}">${prio.charAt(0).toUpperCase()+prio.slice(1)}</span>`:''}
+        ${assignee?`<span class="wl-assignee">${esc(assignee.name)}</span>`:''}
+      </div>
+    </div>
+    <div class="wl-row-actions">
+      <select class="prog-sel prog-${prog}" onclick="event.stopPropagation()" onchange="toggleTaskProgressGlobal('${esc(t.id)}','${esc(p.id)}',this.value)">
+        <option value="not-started" ${prog==='not-started'?'selected':''}>Not Started</option>
+        <option value="in-progress" ${prog==='in-progress'?'selected':''}>In Progress</option>
+        <option value="completed" ${prog==='completed'?'selected':''}>Completed</option>
+      </select>
+    </div>
+  </div>`
+}
+
+function onWlRowClick(e,pid,tid){
+  if(e.shiftKey||e.metaKey||e.ctrlKey){
+    e.preventDefault()
+    toggleTaskSelect(pid,tid)
+    return
+  }
+  // Default: open project
+  goProject(pid)
+}
+
+function countTasksForScope(type){
+  const today=todayIso()
+  const eow=isoDate(new Date(new Date(today+'T00:00:00').setDate(new Date(today+'T00:00:00').getDate()+7)))
+  let n=0
+  for(const m of state.members)for(const b of m.brands)for(const p of b.projects){
+    if(p.status==='archived')continue
+    for(const t of p.tasks){
+      const prog=t.progress||'not-started'
+      if(prog==='completed')continue
+      if(type==='all'){n++;continue}
+      if(type==='today' && t.dueDate===today)n++
+      else if(type==='overdue' && t.dueDate && t.dueDate<today)n++
+      else if(type==='thisweek' && t.dueDate && t.dueDate>=today && t.dueDate<=eow)n++
+      else if(type==='nodate' && !t.dueDate)n++
+    }
+  }
+  return n
+}
+
+function setScope(type,id){
+  viewScope={type,id}
+  selectedTaskIds.clear()
+  viewMode='worklist'
+  render()
+}
+function setWlFilter(v){wlFilter=v;renderMain();const inp=document.querySelector('.wl-filter');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}}
+function setWlGroup(v){wlGroupBy=v;renderMain()}
+function setWlSort(v){wlSortBy=v;renderMain()}
+function setWlShowDone(v){wlShowDone=v;renderMain()}
+
+// ── MULTI-SELECT / BULK ACTIONS ──────────────────────────
+function toggleTaskSelect(pid,tid){
+  const key=pid+'::'+tid
+  if(selectedTaskIds.has(key))selectedTaskIds.delete(key)
+  else selectedTaskIds.add(key)
+  updateBulkBar()
+  // Update just that row's class without full re-render
+  const row=document.querySelector(`.wl-row[data-key="${CSS.escape(key)}"]`)
+  if(row){row.classList.toggle('selected',selectedTaskIds.has(key));const chk=row.querySelector('.wl-sel-chk');if(chk)chk.checked=selectedTaskIds.has(key)}
+}
+function clearSelection(){selectedTaskIds.clear();updateBulkBar();renderMain()}
+function updateBulkBar(){
+  const bar=document.getElementById('bulkBar')
+  if(!bar)return
+  const n=selectedTaskIds.size
+  if(n===0){bar.classList.remove('visible');return}
+  bar.classList.add('visible')
+  const lbl=document.getElementById('bulkCount')
+  if(lbl)lbl.textContent=`${n} selected`
+  const sel=document.getElementById('bulkAssignSel')
+  if(sel && sel.options.length<=1){
+    sel.innerHTML='<option value="__">Assign…</option>'+state.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')+'<option value="_none">Unassign</option>'
+  }
+}
+function forSelectedTasks(fn){
+  for(const key of selectedTaskIds){
+    const [pid,tid]=key.split('::')
+    const f=findProject(pid);if(!f)continue
+    const t=f.p.tasks.find(x=>x.id===tid);if(!t)continue
+    fn(t,f.p,f.b,f.m)
+  }
+}
+function bulkSetPriority(v){forSelectedTasks(t=>{t.priority=v});save();renderMain();showNotice(`Set priority on ${selectedTaskIds.size} task${selectedTaskIds.size===1?'':'s'}`)}
+function bulkSetProgress(v){forSelectedTasks(t=>{t.progress=v;t.done=(v==='completed')});save();renderMain();showNotice(`Updated ${selectedTaskIds.size} task${selectedTaskIds.size===1?'':'s'}`)}
+function bulkSetAssignee(v){forSelectedTasks(t=>{t.assignee=v});save();renderMain();showNotice(`Assigned ${selectedTaskIds.size} task${selectedTaskIds.size===1?'':'s'}`)}
+function bulkSetDue(v){forSelectedTasks(t=>{t.dueDate=v});save();renderMain();showNotice(`Set due date on ${selectedTaskIds.size} task${selectedTaskIds.size===1?'':'s'}`)}
+function bulkDelete(){
+  const n=selectedTaskIds.size
+  if(!n)return
+  showConfirm(`Delete ${n} selected task${n===1?'':'s'}?\nThis cannot be undone easily.`,()=>{
+    forSelectedTasks((t,p)=>{p.tasks=p.tasks.filter(x=>x.id!==t.id)})
+    selectedTaskIds.clear();save();renderMain();showNotice(`Deleted ${n} task${n===1?'':'s'}`)
+  },'Delete')
+}
+
+// ── COMMAND BAR (Cmd+K) ──────────────────────────────────
+function openCmdBar(){
+  cmdBarOpen=true
+  const ov=document.getElementById('cmdbarOv')
+  if(!ov)return
+  ov.style.display='flex'
+  const inp=document.getElementById('cmdbarInp')
+  if(inp){inp.value='';inp.focus()}
+  updateCmdHint('')
+}
+function closeCmdBar(){
+  cmdBarOpen=false
+  const ov=document.getElementById('cmdbarOv')
+  if(ov)ov.style.display='none'
+}
+function onCmdBarKey(e){
+  if(e.key==='Escape'){e.preventDefault();closeCmdBar();return}
+  if(e.key==='Enter'){e.preventDefault();cmdBarExec(e.target.value);return}
+}
+function onCmdBarInput(e){updateCmdHint(e.target.value)}
+function updateCmdHint(v){
+  const hint=document.getElementById('cmdbarHint')
+  if(!hint)return
+  const parsed=parseCmdInput(v)
+  if(!v.trim()){hint.innerHTML='<span class="cmdhint-dim">Try: <em>tomorrow urgent review sketches for dockers</em></span>';return}
+  if(parsed.type==='filter'){hint.textContent=`Filter: "${parsed.q}" — press Enter to apply`;return}
+  if(parsed.type==='task'){
+    const proj=parsed.project||'— pick project —'
+    const due=parsed.due?friendly(parsed.due):'no due'
+    const prio=parsed.priority||'no priority'
+    hint.innerHTML=`<span class="cmdhint-tag">📋 ${esc(proj)}</span> <span class="cmdhint-tag">📅 ${esc(due)}</span> ${parsed.priority?`<span class="cmdhint-tag prio-${parsed.priority}">${prio}</span>`:''} ${parsed.assignee?`<span class="cmdhint-tag">👤 ${esc(parsed.assignee)}</span>`:''}`
+    return
+  }
+  hint.textContent='Press Enter'
+}
+function parseCmdInput(raw){
+  const v=(raw||'').trim()
+  if(!v)return {type:'empty'}
+  if(v.startsWith('/')){
+    // slash commands
+    return {type:'command',cmd:v.slice(1)}
+  }
+  if(v.startsWith('@')){
+    return {type:'filter',q:v}
+  }
+  // Task creation grammar: keywords extract priority/due/assignee, project inferred from name/brand match
+  const today=todayIso()
+  function addDays(n){
+    const d=new Date(today+'T00:00:00');d.setDate(d.getDate()+n);return isoDate(d)
+  }
+  let due=''
+  let priority=''
+  let assigneeName=''
+  let assigneeId=''
+  let projectName=''
+  let projectId=''
+
+  // remove tokens as we find them
+  let txt=' '+v+' '
+  // due tokens
+  const dueMap={today:0,tomorrow:1,tmrw:1,'next-week':7,'nextweek':7,'this-week':3}
+  for(const k of Object.keys(dueMap)){
+    const rx=new RegExp('\\b'+k.replace('-','\\W?')+'\\b','i')
+    if(rx.test(txt)){due=addDays(dueMap[k]);txt=txt.replace(rx,' ');break}
+  }
+  // monday..sunday
+  if(!due){
+    const days=['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+    for(let i=0;i<7;i++){
+      const rx=new RegExp('\\b'+days[i]+'\\b','i')
+      if(rx.test(txt)){
+        const td=new Date(today+'T00:00:00');const cur=td.getDay()
+        let diff=i-cur;if(diff<=0)diff+=7
+        due=addDays(diff);txt=txt.replace(rx,' ');break
+      }
+    }
+  }
+  // priority tokens
+  const prios=['urgent','high','medium','low']
+  for(const pr of prios){
+    const rx=new RegExp('\\b'+pr+'\\b','i')
+    if(rx.test(txt)){priority=pr;txt=txt.replace(rx,' ');break}
+  }
+  // assignee: @name
+  const atMatch=txt.match(/@(\w+)/)
+  if(atMatch){
+    const qn=atMatch[1].toLowerCase()
+    const m=state.members.find(mx=>mx.name.toLowerCase().startsWith(qn))
+    if(m){assigneeName=m.name;assigneeId=m.id}
+    txt=txt.replace(atMatch[0],' ')
+  }
+  // project: match by project name token (longest match wins)
+  const projs=allActiveProjects()
+  let bestProj=null,bestLen=0
+  for(const {p,b,m} of projs){
+    const tokens=[p.name,b.name]
+    for(const tok of tokens){
+      if(!tok)continue
+      const low=tok.toLowerCase()
+      const rx=new RegExp('\\b'+low.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i')
+      if(rx.test(txt) && tok.length>bestLen){bestProj={p,b,m,match:tok};bestLen=tok.length}
+    }
+  }
+  if(bestProj){
+    projectName=bestProj.p.name;projectId=bestProj.p.id
+    const rx=new RegExp('\\b'+bestProj.match.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i')
+    txt=txt.replace(rx,' ')
+  } else if(selId){
+    const f=findProject(selId);if(f){projectName=f.p.name;projectId=f.p.id}
+  } else if(viewScope.type==='project'){
+    const f=findProject(viewScope.id);if(f){projectName=f.p.name;projectId=f.p.id}
+  }
+  const taskText=txt.replace(/\s+/g,' ').trim()
+  return {type:'task',text:taskText,due,priority,project:projectName,projectId,assignee:assigneeName,assigneeId}
+}
+function cmdBarExec(raw){
+  const parsed=parseCmdInput(raw)
+  if(parsed.type==='empty'){closeCmdBar();return}
+  if(parsed.type==='filter'){
+    wlFilter=parsed.q;viewMode='worklist';closeCmdBar();render()
+    return
+  }
+  if(parsed.type==='command'){
+    const c=parsed.cmd.toLowerCase()
+    if(c==='today'){setScope('today');closeCmdBar();return}
+    if(c==='overdue'){setScope('overdue');closeCmdBar();return}
+    if(c==='week'||c==='thisweek'){setScope('thisweek');closeCmdBar();return}
+    if(c==='all'){setScope('all');closeCmdBar();return}
+    if(c==='cal'||c==='calendar'){showView('allcal');closeCmdBar();return}
+    if(c==='home'||c==='dashboard'){showView('home');closeCmdBar();return}
+    showNotice('Unknown command: /'+parsed.cmd)
+    return
+  }
+  if(parsed.type==='task'){
+    if(!parsed.text){showNotice('Enter a task description');return}
+    if(!parsed.projectId){showNotice('Could not determine project — include project/brand name in your text');return}
+    const f=findProject(parsed.projectId);if(!f){closeCmdBar();return}
+    f.p.tasks.push({id:uid(),text:parsed.text,startDate:'',dueDate:parsed.due||'',done:false,progress:'not-started',priority:parsed.priority||'',assignee:parsed.assigneeId||'',note:''})
+    save();closeCmdBar();render()
+    showNotice(`Added to ${f.p.name}`)
+    return
+  }
+  closeCmdBar()
+}
+
+// ── GLOBAL KEYBOARD SHORTCUTS ────────────────────────────
+function isEditableTarget(el){
+  if(!el)return false
+  const tag=el.tagName
+  return tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||el.isContentEditable
+}
+function onGlobalKeydown(e){
+  // Cmd+K / Ctrl+K — cmd bar (works anywhere)
+  if((e.metaKey||e.ctrlKey) && (e.key==='k'||e.key==='K')){
+    e.preventDefault();if(cmdBarOpen)closeCmdBar();else openCmdBar();return
+  }
+  if(cmdBarOpen)return
+  if(isEditableTarget(e.target))return
+  // Esc — clear selection / close modals
+  if(e.key==='Escape'){
+    if(selectedTaskIds.size){clearSelection();e.preventDefault();return}
+  }
+  // / — focus filter in worklist
+  if(e.key==='/' && viewMode==='worklist'){
+    const inp=document.querySelector('.wl-filter')
+    if(inp){e.preventDefault();inp.focus();inp.select()}
+    return
+  }
+  // 1..5 — scope jump
+  if(viewMode==='worklist' && !e.metaKey && !e.ctrlKey && !e.altKey){
+    const scopeMap={'1':'today','2':'overdue','3':'thisweek','4':'all','5':'nodate'}
+    if(scopeMap[e.key]){e.preventDefault();setScope(scopeMap[e.key]);return}
+  }
+  // g then w — go worklist; g then h — go home
+  if(e.key==='w' && !e.metaKey && !e.ctrlKey){
+    if(_lastKey==='g'){e.preventDefault();showView('worklist');_lastKey=null;return}
+  }
+  if(e.key==='h' && !e.metaKey && !e.ctrlKey){
+    if(_lastKey==='g'){e.preventDefault();showView('home');_lastKey=null;return}
+  }
+  _lastKey=e.key
+  setTimeout(()=>{if(_lastKey===e.key)_lastKey=null},900)
+}
+let _lastKey=null
+let _globalKeyBound=false
+
 
 function renderDashboard(){
   const projects=allActiveProjects().map(entry=>({...entry,health:projectHealth(entry)}))
@@ -2816,6 +3345,7 @@ function deleteBrand(id){
 //  RENDER
 // ══════════════════════════════════════════════════════
 function render(){
+  if(!_globalKeyBound){document.addEventListener('keydown',onGlobalKeydown);_globalKeyBound=true}
   renderSidebar()
   renderMain()
   // Sync theme button active states after sidebar re-render
