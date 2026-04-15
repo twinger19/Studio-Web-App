@@ -995,6 +995,31 @@ function renderDetail(p,m,b){
       ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
     </div>
 
+    <!-- SUMMARY -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">📋 Project Summary</div>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
+          ${isArch?'disabled':''}
+          onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
+        <div class="proj-dates-row">
+          <div class="proj-date-field">
+            <strong>Project Start</strong>
+            <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
+              onchange="updateProjStart(this.value)" title="Overall project start date">
+          </div>
+          <div class="proj-date-field">
+            <strong>Project End</strong>
+            <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
+              onchange="updateProjEnd(this.value)" title="Overall project end date">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TASKS -->
     <div class="card">
       <div class="card-head open" onclick="toggleCard(this)">
@@ -1037,31 +1062,6 @@ function renderDetail(p,m,b){
       <div class="card-body open">
         <div id="noteList">${p.notes.map(n=>noteHTML(n)).join('')}</div>
         ${!isArch?`<button class="add-note-btn" onclick="doAddNote()">＋ Add note</button>`:''}
-      </div>
-    </div>
-
-    <!-- SUMMARY -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">📋 Project Summary</div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
-          ${isArch?'disabled':''}
-          onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
-        <div class="proj-dates-row">
-          <div class="proj-date-field">
-            <strong>Project Start</strong>
-            <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
-              onchange="updateProjStart(this.value)" title="Overall project start date">
-          </div>
-          <div class="proj-date-field">
-            <strong>Project End</strong>
-            <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
-              onchange="updateProjEnd(this.value)" title="Overall project end date">
-          </div>
-        </div>
       </div>
     </div>
 
