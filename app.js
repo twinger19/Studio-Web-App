@@ -119,8 +119,9 @@ const IDB = {
 // ══════════════════════════════════════════════════════
 //  SUPABASE CLOUD SYNC
 // ══════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://gzbyncxpmwtpwaegfrnx.supabase.co'
-const SUPABASE_KEY = 'sb_publishable_RYHhWPfpm-ps5TSF3R_qDQ_YEcxilIq'
+// Credentials loaded from config.js (not committed to git — see config.example.js)
+const SUPABASE_URL = window.STUDIO_CONFIG?.SUPABASE_URL || 'https://gzbyncxpmwtpwaegfrnx.supabase.co'
+const SUPABASE_KEY = window.STUDIO_CONFIG?.SUPABASE_KEY || ''
 const SB_TABLE = 'studio_state'
 const SB_ROW = 'main'
 let _cloudTimer = null
@@ -872,18 +873,32 @@ function renderTodayView(){
     </div>`
   }
 
+  // Build project options for quick-add
+  const allActiveProjs=allActiveProjects()
+  const projOptions=allActiveProjs.map(({p,b,m})=>
+    `<option value="${esc(p.id)}">[${esc(m.name)}] ${esc(p.name)}</option>`
+  ).join('')
+
   return `<div class="today-view">
     <div class="today-hero">
       <div class="today-date-label">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
       <div class="today-headline">Today's Focus</div>
       <div class="today-sub">${totalOpen} open task${totalOpen!==1?'s':''} across all active projects${overdue.length?` &nbsp;·&nbsp; <strong style="color:var(--red)">${overdue.length} overdue</strong>`:''}</div>
     </div>
+    <div class="today-quick-add">
+      <input class="today-qa-inp" id="todayQAText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTaskFromToday()">
+      <select class="today-qa-proj" id="todayQAProj">
+        ${projOptions||'<option value="">— no active projects —</option>'}
+      </select>
+      <input type="date" class="add-date-inp" id="todayQADue" title="Due date">
+      <button class="btn btn-primary btn-sm" onclick="addTaskFromToday()">Add</button>
+    </div>
     ${section('Overdue',overdue,'overdue-hdr')}
     ${section('Due Today',dueToday,'today-hdr')}
     ${section('This Week',thisWeek,'week-hdr')}
     ${section('Next Week',nextWeek)}
     ${section('No Due Date',noDue,'nodate-hdr')}
-    ${totalOpen===0?`<div class="empty"><div class="empty-ico">🎉</div><div class="empty-ttl">All clear!</div><div class="empty-sub">No open tasks right now. Add tasks to your projects to start filling this view.</div></div>`:''}
+    ${totalOpen===0?`<div class="empty" style="margin-top:24px"><div class="empty-ico">🎉</div><div class="empty-ttl">All clear!</div><div class="empty-sub">No open tasks right now. Add one above or navigate into a project.</div></div>`:''}
   </div>`
 }
 
@@ -899,6 +914,27 @@ function toggleTaskProgressGlobal(tid,pid,v){
   if(!found)return
   const t=found.p.tasks.find(t=>t.id===tid)
   if(t){t.progress=v;t.done=(v==='completed');save();renderMain()}
+}
+
+function addTaskFromToday(){
+  const txt=(document.getElementById('todayQAText')?.value||'').trim()
+  const projId=document.getElementById('todayQAProj')?.value
+  const due=document.getElementById('todayQADue')?.value||''
+  if(!txt||!projId){
+    const inp=document.getElementById('todayQAText')
+    if(inp){inp.focus();inp.style.borderColor='var(--red)';setTimeout(()=>inp.style.borderColor='',1200)}
+    return
+  }
+  const found=findProject(projId)
+  if(!found)return
+  found.p.tasks.push({id:uid(),text:txt,startDate:'',dueDate:due,done:false,progress:'not-started',priority:''})
+  save()
+  // Clear inputs and re-render
+  const inp=document.getElementById('todayQAText')
+  const dateInp=document.getElementById('todayQADue')
+  if(inp){inp.value='';inp.focus()}
+  if(dateInp)dateInp.value=''
+  renderMain()
 }
 
 // ══════════════════════════════════════════════════════
@@ -2731,6 +2767,7 @@ async function checkAuth() {
 //  STUDIO AI CHAT
 // ══════════════════════════════════════════════════════
 const CHAT_KEY_STORE = 'studio_ai_key'
+const CHAT_HISTORY_KEY = 'studio_chat_history'
 const CHAT_MODEL = 'claude-haiku-4-5-20251001'
 let chatOpen = false
 let chatBusy = false
@@ -2738,6 +2775,20 @@ let chatHistory = []   // [{role:'user'|'assistant', content:'...'}]
 
 // ── Key management ─────────────────────────────────────
 function getChatKey(){ return safeStorageGet(CHAT_KEY_STORE)||'' }
+
+function saveChatHistory(){
+  try{ safeStorageSet(CHAT_HISTORY_KEY, JSON.stringify(chatHistory.slice(-20))) }catch{}
+}
+
+function loadChatHistory(){
+  try{
+    const stored = safeStorageGet(CHAT_HISTORY_KEY)
+    if(stored){
+      const parsed = JSON.parse(stored)
+      if(Array.isArray(parsed)) chatHistory = parsed.slice(-20)
+    }
+  }catch{ chatHistory=[] }
+}
 
 function saveChatKey(){
   const k = (document.getElementById('chatKeyInp')?.value||'').trim()
@@ -2784,12 +2835,41 @@ function initChatUI(){
     setup.style.display = 'none'
     msgs.style.display  = 'flex'
     inp.style.display   = 'block'
-    if(chatHistory.length === 0) renderWelcome()
+    // Load persisted history on first open
+    if(chatHistory.length === 0){
+      loadChatHistory()
+      if(chatHistory.length === 0){
+        renderWelcome()
+      } else {
+        // Restore prior conversation bubbles
+        restoreChatHistory()
+      }
+    }
     setTimeout(()=>document.getElementById('chatInp')?.focus(), 80)
   }
 }
 
 // ── Welcome screen ──────────────────────────────────────
+function restoreChatHistory(){
+  const msgs = document.getElementById('chatMessages')
+  if(!msgs) return
+  msgs.innerHTML = ''
+  // Show a subtle "continuing previous conversation" label
+  appendChatHTML(`<div style="align-self:center;font-size:11px;color:var(--tm);padding:4px 0 8px;opacity:.6">— Previous conversation —</div>`)
+  chatHistory.slice(-10).forEach(msg=>{
+    if(msg.role==='user'){
+      appendChatHTML(`<div class="chat-msg user">
+        <div class="chat-bubble">${esc(msg.content).replace(/\n/g,'<br>')}</div>
+      </div>`)
+    }else{
+      appendChatHTML(`<div class="chat-msg ai">
+        <div class="chat-bubble">${formatChatMarkdown(msg.content)}</div>
+      </div>`)
+    }
+  })
+  scrollChat()
+}
+
 function renderWelcome(){
   const activeProjs = allActiveProjects().length
   const overdue     = computeAlerts().overdue.length
@@ -2923,6 +3003,7 @@ async function sendChat(){
 
   // Add to history
   chatHistory.push({role:'user', content:text})
+  saveChatHistory()
 
   // Show typing
   const typingId = 'ct_'+Date.now()
@@ -3019,6 +3100,7 @@ ${context}`
     // Final render & save to history
     if(bubbleEl) bubbleEl.innerHTML = formatChatMarkdown(aiText)
     chatHistory.push({role:'assistant', content:aiText})
+    saveChatHistory()
     scrollChat()
 
   } catch(e){
