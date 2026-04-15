@@ -79,6 +79,7 @@ function migrate(d){
       // Task micro-note
       if(!('note'in t))t.note=''
       if(!('priority'in t))t.priority=''
+      if(!('assignee'in t))t.assignee=''
     }
     // Notes
     for(const n of p.notes||[]){if('content'in n&&!('body'in n)){n.body=n.content;delete n.content}}
@@ -852,6 +853,7 @@ function renderTodayView(){
           <span class="today-task-proj" onclick="goProject('${esc(p.id)}')" style="color:${m.color}">${esc(p.name)}</span>
           ${t.dueDate?`<span class="today-task-due" style="${isOverdue?'color:var(--red)':''}">${isOverdue?'Overdue · ':''}${esc(friendly(t.dueDate))}</span>`:''}
           ${prioHtml}
+          ${t.assignee?`<span class="today-task-assignee">${esc(state.members.find(mx=>mx.id===t.assignee)?.name||'')}</span>`:''}
         </div>
       </div>
       <select class="prog-sel prog-${prog}" onchange="toggleTaskProgressGlobal('${esc(t.id)}','${esc(p.id)}',this.value)">
@@ -956,6 +958,52 @@ function renderDetail(p,m,b){
     <div class="proj-meta">
       <span class="badge badge-${p.status}">${p.status}</span>
       <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
+      ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
+    </div>
+
+    <!-- TASKS -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">✅ Tasks
+          <span class="card-cnt">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</span>
+        </div>
+        <button class="sort-toggle-btn${sortByDue?' on':''}" onclick="event.stopPropagation();toggleSortByDue()" title="Sort tasks by due date">📅 ${sortByDue?'Date ↑':'Sort by date'}</button>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        ${!isArch?`<div class="task-template-row">
+          <div class="task-template-copy">Use your standard product development workflow as a starting point, then plug in project-specific dates after the tasks are created.</div>
+          <button class="btn btn-ghost btn-sm" onclick="generateProductDevelopmentTasks()">Generate Product Development Tasks</button>
+        </div>`:''}
+        <div id="taskList">${sortedTaskList(shown).map(t=>taskHTML(t)).join('')}</div>
+        ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
+        ${!isArch?`<div class="add-task-row">
+          <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
+          <select class="prio-sel" id="newTPrio" title="Priority">
+            <option value="">– Priority</option>
+            <option value="urgent">🔴 Urgent</option>
+            <option value="high">🟠 High</option>
+            <option value="medium">🔵 Medium</option>
+            <option value="low">⚪ Low</option>
+          </select>
+          <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
+          <span style="font-size:11px;color:var(--tm);opacity:.5">→</span>
+          <input type="date" class="add-date-inp" id="newTDue" title="Due date">
+          <button class="btn btn-primary btn-sm" onclick="doAddTask()">Add</button>
+        </div>`:''}
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="card">
+      <div class="card-head open" onclick="toggleCard(this)">
+        <div class="card-ttl">📝 Notes<span class="card-cnt">${p.notes.length}</span></div>
+        <span class="card-chev open">▶</span>
+      </div>
+      <div class="card-body open">
+        <div id="noteList">${p.notes.map(n=>noteHTML(n)).join('')}</div>
+        ${!isArch?`<button class="add-note-btn" onclick="doAddNote()">＋ Add note</button>`:''}
+      </div>
     </div>
 
     <!-- SUMMARY -->
@@ -1024,51 +1072,6 @@ function renderDetail(p,m,b){
       </div>
     </div>
 
-    <!-- TASKS -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">✅ Tasks
-          <span class="card-cnt">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</span>
-        </div>
-        <button class="sort-toggle-btn${sortByDue?' on':''}" onclick="event.stopPropagation();toggleSortByDue()" title="Sort tasks by due date">📅 ${sortByDue?'Date ↑':'Sort by date'}</button>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        ${!isArch?`<div class="task-template-row">
-          <div class="task-template-copy">Use your standard product development workflow as a starting point, then plug in project-specific dates after the tasks are created.</div>
-          <button class="btn btn-ghost btn-sm" onclick="generateProductDevelopmentTasks()">Generate Product Development Tasks</button>
-        </div>`:''}
-        <div id="taskList">${sortedTaskList(shown).map(t=>taskHTML(t)).join('')}</div>
-        ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
-        ${!isArch?`<div class="add-task-row">
-          <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
-          <select class="prio-sel" id="newTPrio" title="Priority">
-            <option value="">– Priority</option>
-            <option value="urgent">🔴 Urgent</option>
-            <option value="high">🟠 High</option>
-            <option value="medium">🔵 Medium</option>
-            <option value="low">⚪ Low</option>
-          </select>
-          <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
-          <span style="font-size:11px;color:var(--tm);opacity:.5">→</span>
-          <input type="date" class="add-date-inp" id="newTDue" title="Due date">
-          <button class="btn btn-primary btn-sm" onclick="doAddTask()">Add</button>
-        </div>`:''}
-      </div>
-    </div>
-
-    <!-- NOTES -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">📝 Notes<span class="card-cnt">${p.notes.length}</span></div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <div id="noteList">${p.notes.map(n=>noteHTML(n)).join('')}</div>
-        ${!isArch?`<button class="add-note-btn" onclick="doAddNote()">＋ Add note</button>`:''}
-      </div>
-    </div>
-
     <!-- LINKS -->
     <div class="card">
       <div class="card-head open" onclick="toggleCard(this)">
@@ -1104,10 +1107,16 @@ function taskHTML(t){
     ondragend="projDragEnd(event)"
     ondragover="projDragOver(event,'task')"
     ondrop="projDrop(event,'task','${t.id}')">
+    <span class="drag-handle" title="Drag to reorder">⠿</span>
     <input type="checkbox" class="task-chk" ${prog==='completed'?'checked':''} onchange="toggleTask('${t.id}',this.checked)">
     <div class="task-body">
       <textarea class="task-txt ${txtClass}" rows="1"
         onblur="updateTaskTxt('${t.id}',this.value)" oninput="autoGrow(this)">${esc(t.text)}</textarea>
+      <div class="task-meta-chips">
+        ${t.dueDate?`<span class="tmeta-due${dc?' '+dc:''}">${esc(friendly(t.dueDate))}</span>`:''}
+        ${prio?`<span class="tmeta-prio prio-${prio}">${prio.charAt(0).toUpperCase()+prio.slice(1)}</span>`:''}
+        ${t.assignee?`<span class="tmeta-assignee">${esc(state.members.find(mx=>mx.id===t.assignee)?.name||'')}</span>`:''}
+      </div>
       <div class="task-dates">
         <div class="task-date-field">
           <span class="date-lbl">Start</span>
@@ -1129,6 +1138,10 @@ function taskHTML(t){
             <option value="high" ${prio==='high'?'selected':''}>🟠 High</option>
             <option value="medium" ${prio==='medium'?'selected':''}>🔵 Medium</option>
             <option value="low" ${prio==='low'?'selected':''}>⚪ Low</option>
+          </select>
+          <select class="task-assignee-sel" onchange="updateTaskAssignee('${t.id}',this.value)" title="Assignee">
+            <option value="" ${!t.assignee?'selected':''}>Assign…</option>
+            ${state.members.filter(mx=>!mx.isMe).map(mx=>`<option value="${mx.id}" ${t.assignee===mx.id?'selected':''}>${esc(mx.name)}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -1190,6 +1203,7 @@ function noteHTML(n){
     ondragover="projDragOver(event,'note')"
     ondrop="projDrop(event,'note','${n.id}')">
     <div class="note-head" onclick="toggleNote('${n.id}',event)">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <span class="note-chev ${n.open?'open':''}">▶</span>
       <input class="note-title-inp" value="${esc(n.title)}" placeholder="Note title"
         onclick="event.stopPropagation()" onblur="updateNoteTitle('${n.id}',this.value)">
@@ -1880,7 +1894,7 @@ function clearFormatting(nid){
 function promptForLink(nid){
   const href=prompt('Paste a full URL (https://...)')
   if(!href)return
-  if(!/^https?:\/\//i.test(href)){alert('Please use a full URL starting with http:// or https://');return}
+  if(!/^https?:\/\//i.test(href)){showNotice('Please use a full URL starting with https://');return}
   const info=createRangeFromStoredSelection(nid)
   const editor=getEditor(nid)
   if(!info||!editor)return
@@ -2036,6 +2050,17 @@ function doSearch(q){
       const hay=`${l.label||''} ${l.url||''}`.trim()
       if(hay.toLowerCase().includes(qLow)){
         hits.push({kind:'link',title:l.label||l.url||'Project Link',p,b,m,id:l.id,snippet:highlightSnippet(hay,q)})
+      }
+    }
+    for(const mt of p.meetings||[]){
+      if((mt.title||'').toLowerCase().includes(qLow)){
+        hits.push({kind:'meeting',title:mt.title||'Meeting',p,b,m,id:mt.id,snippet:highlightSnippet(mt.title||'',q)})
+      }
+    }
+    for(const tr of p.travel||[]){
+      const hay=`${tr.type||''} ${tr.title||''}`.trim()
+      if(hay.toLowerCase().includes(qLow)){
+        hits.push({kind:'travel',title:tr.title||tr.type||'Travel',p,b,m,id:tr.id,snippet:highlightSnippet(hay,q)})
       }
     }
   }
@@ -2225,7 +2250,39 @@ function toggleArchived(){state.showArchived=!state.showArchived;document.getEle
 //  PROJECT ACTIONS
 // ══════════════════════════════════════════════════════
 function updateProjName(v){const f=sel();if(f&&v.trim()){f.p.name=v.trim();save();renderSidebar()}}
-function archiveProject(){const f=sel();if(!f||!confirm(`Archive "${f.p.name}"?`))return;f.p.status='archived';save();render()}
+function duplicateProject(pid){
+  const f=findProject(pid);if(!f)return
+  const copy=deepClone(f.p)
+  copy.id=uid()
+  copy.name=f.p.name+' (Copy)'
+  copy.status='active'
+  copy.startDate=''
+  copy.endDate=''
+  // Reset task dates and progress
+  for(const t of copy.tasks||[]){
+    t.id=uid()
+    t.startDate=''
+    t.dueDate=''
+    t.progress='not-started'
+    t.done=false
+  }
+  // Reset note ids
+  for(const n of copy.notes||[]){n.id=uid()}
+  for(const l of copy.links||[]){l.id=uid()}
+  copy.meetings=[]
+  copy.travel=[]
+  f.b.projects.push(copy)
+  openBrands.add(f.b.id);openMembers.add(f.m.id)
+  selId=copy.id
+  save();render()
+}
+
+function archiveProject(){
+  const f=sel();if(!f)return
+  showConfirm(`Archive "${f.p.name}"? You can unarchive it later.`,()=>{
+    f.p.status='archived';save();render()
+  },'Archive')
+}
 function unarchive(){const f=sel();if(!f)return;f.p.status='active';save();render()}
 
 // ══════════════════════════════════════════════════════
@@ -2247,7 +2304,7 @@ function generateProductDevelopmentTasks(){
   const existing=new Set(f.p.tasks.map(t=>String(t.text||'').trim().toLowerCase()).filter(Boolean))
   const toAdd=PRODUCT_DEVELOPMENT_TEMPLATE.filter(name=>!existing.has(name.toLowerCase()))
   if(!toAdd.length){
-    alert('All standard product development tasks are already in this project.')
+    showNotice('All product development tasks are already in this project.')
     return
   }
   toAdd.forEach(text=>{
@@ -2255,7 +2312,7 @@ function generateProductDevelopmentTasks(){
   })
   save()
   renderMain()
-  alert(`Added ${toAdd.length} product development task${toAdd.length===1?'':'s'}.`)
+  showNotice(`Added ${toAdd.length} product development task${toAdd.length===1?'':'s'}.`)
 }
 
 function toggleTask(tid,checked){
@@ -2267,6 +2324,14 @@ function toggleTask(tid,checked){
 function updateTaskTxt(tid,v){const f=sel();if(!f)return;const t=f.p.tasks.find(t=>t.id===tid);if(t&&v.trim()){t.text=v.trim();save()}}
 function updateTaskStart(tid,v){const f=sel();if(!f)return;const t=f.p.tasks.find(t=>t.id===tid);if(t){t.startDate=v;save();renderSidebar()}}
 function updateTaskDue(tid,v){const f=sel();if(!f)return;const t=f.p.tasks.find(t=>t.id===tid);if(t){t.dueDate=v;save();renderSidebar()}}
+function updateTaskAssignee(tid,v){
+  const f=sel();if(!f)return
+  const t=f.p.tasks.find(t=>t.id===tid)
+  if(!t)return
+  t.assignee=v
+  save()
+}
+
 function updateTaskPriority(tid,v){
   const f=sel();if(!f)return
   const t=f.p.tasks.find(t=>t.id===tid)
@@ -2505,8 +2570,8 @@ function exportJSON(){
 
 function copyJSON(){
   navigator.clipboard.writeText(JSON.stringify(state,null,2))
-    .then(()=>alert('JSON copied to clipboard!'))
-    .catch(()=>alert('Copy failed — try Export JSON instead.'))
+    .then(()=>showNotice('JSON copied to clipboard! ✓'))
+    .catch(()=>showNotice('Copy failed — try Export JSON instead.'))
 }
 
 function onFileImport(e){
@@ -2520,8 +2585,8 @@ function onFileImport(e){
       selId=null;viewMode='detail'
       openMembers=new Set(state.members.filter(m=>m.isMe).map(m=>m.id))
       render()
-      alert('✅ Import successful!')
-    }catch(err){alert('❌ Import failed: '+err.message)}
+      showNotice('Import successful! ✓')
+    }catch(err){showNotice('Import failed: '+err.message)}
   }
   reader.readAsText(file)
   e.target.value=''
@@ -2531,7 +2596,7 @@ function onDrop(e){
   e.preventDefault()
   document.getElementById('dropZone')?.classList.remove('drag-over')
   const file=e.dataTransfer.files[0]
-  if(!file||!file.name.endsWith('.json')){alert('Please drop a .json file');return}
+  if(!file||!file.name.endsWith('.json')){showNotice('Please drop a .json file');return}
   const reader=new FileReader()
   reader.onload=ev=>{
     try{
@@ -2541,10 +2606,56 @@ function onDrop(e){
       selId=null;viewMode='detail'
       openMembers=new Set(state.members.filter(m=>m.isMe).map(m=>m.id))
       render()
-      alert('✅ Import successful!')
-    }catch(err){alert('❌ Import failed: '+err.message)}
+      showNotice('Import successful! ✓')
+    }catch(err){showNotice('Import failed: '+err.message)}
   }
   reader.readAsText(file)
+}
+
+// ══════════════════════════════════════════════════════
+//  CUSTOM DIALOG HELPERS (replace native alert/confirm/prompt)
+// ══════════════════════════════════════════════════════
+let _confirmCallback = null
+let _promptCallback = null
+
+function showConfirm(msg, onYes, dangerLabel='Delete'){
+  _confirmCallback = onYes
+  modalType = 'confirm'
+  modalCtx = null
+  document.getElementById('modalTtl').textContent = 'Are you sure?'
+  document.getElementById('modalFields').innerHTML = `<div class="confirm-msg">${msg}</div>`
+  const okBtn = document.getElementById('modalOk')
+  okBtn.textContent = dangerLabel
+  okBtn.className = 'btn btn-danger'
+  document.getElementById('modalOv').style.display = 'flex'
+}
+
+function showPromptModal(title, placeholder, onSubmit){
+  _promptCallback = onSubmit
+  modalType = 'textPrompt'
+  modalCtx = null
+  document.getElementById('modalTtl').textContent = title
+  document.getElementById('modalFields').innerHTML = `<div class="field"><input id="mf1" placeholder="${placeholder}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  const okBtn = document.getElementById('modalOk')
+  okBtn.textContent = 'Create'
+  okBtn.className = 'btn btn-primary'
+  document.getElementById('modalOv').style.display = 'flex'
+  setTimeout(()=>{const el=document.getElementById('mf1');if(el)el.focus()},30)
+}
+
+function showNotice(msg){
+  const toast=document.getElementById('undoToast')
+  const msgEl=document.getElementById('undoMsg')
+  if(!toast||!msgEl)return
+  clearTimeout(_undoTimer)
+  msgEl.textContent=msg
+  const undoBtn=toast.querySelector('.undo-btn')
+  if(undoBtn)undoBtn.style.display='none'
+  toast.classList.add('visible')
+  _undoTimer=setTimeout(()=>{
+    toast.classList.remove('visible')
+    if(undoBtn)undoBtn.style.display=''
+  },2500)
 }
 
 // ══════════════════════════════════════════════════════
@@ -2580,7 +2691,13 @@ function openModal(type,ctx){
   setTimeout(()=>{const el=document.getElementById('mf1');if(el)el.focus()},30)
 }
 
-function closeModal(){document.getElementById('modalOv').style.display='none';modalType=null;modalCtx=null}
+function closeModal(){
+  document.getElementById('modalOv').style.display='none'
+  modalType=null;modalCtx=null
+  _confirmCallback=null;_promptCallback=null
+  const okBtn=document.getElementById('modalOk')
+  if(okBtn){okBtn.textContent='Add';okBtn.className='btn btn-primary'}
+}
 
 function modalSubmit(){
   const name=(document.getElementById('mf1')?.value||'').trim()
@@ -2620,9 +2737,19 @@ function modalSubmit(){
   } else if(modalType==='quickTask'){
     const due=document.getElementById('mf2')?.value||modalCtx
     const f=sel();if(!f)return
-    f.p.tasks.push({id:uid(),text:name,startDate:'',dueDate:due,done:false})
+    f.p.tasks.push({id:uid(),text:name,startDate:'',dueDate:due,done:false,progress:'not-started',priority:'',assignee:''})
     save();closeModal()
     viewMode='detail';renderMain()
+  } else if(modalType==='confirm'){
+    const cb=_confirmCallback
+    closeModal()
+    if(cb)cb()
+  } else if(modalType==='textPrompt'){
+    const val=(document.getElementById('mf1')?.value||'').trim()
+    if(!val)return
+    const cb=_promptCallback
+    closeModal()
+    if(cb)cb(val)
   }
 }
 
@@ -2633,21 +2760,22 @@ function deleteMember(id){
   const m=state.members.find(m=>m.id===id);if(!m)return
   const projectCount=m.brands.reduce((n,b)=>n+b.projects.length,0)
   const warning=projectCount>0?` This will also delete ${m.brands.length} brand(s) and ${projectCount} project(s).`:''
-  if(!confirm(`Delete "${m.name}"?${warning} This cannot be undone.`))return
-  state.members=state.members.filter(m=>m.id!==id)
-  // Clear selection if the selected project belonged to this member
-  if(selId){const f=findProject(selId);if(!f)selId=null}
-  save();render()
+  showConfirm(`Delete "${m.name}"?${warning} This cannot be undone.`,()=>{
+    state.members=state.members.filter(m=>m.id!==id)
+    if(selId){const f=findProject(selId);if(!f)selId=null}
+    save();render()
+  })
 }
 
 function deleteBrand(id){
   const fb=findBrand(id);if(!fb)return
   const count=fb.b.projects.length
   const warning=count>0?` This will also delete ${count} project(s).`:''
-  if(!confirm(`Delete "${fb.b.name}"?${warning} This cannot be undone.`))return
-  fb.m.brands=fb.m.brands.filter(b=>b.id!==id)
-  if(selId){const f=findProject(selId);if(!f)selId=null}
-  save();render()
+  showConfirm(`Delete "${fb.b.name}"?${warning} This cannot be undone.`,()=>{
+    fb.m.brands=fb.m.brands.filter(b=>b.id!==id)
+    if(selId){const f=findProject(selId);if(!f)selId=null}
+    save();render()
+  })
 }
 
 // ══════════════════════════════════════════════════════
@@ -2708,7 +2836,7 @@ async function init() {
 // ══════════════════════════════════════════════════════
 //  PASSWORD PROTECTION
 // ══════════════════════════════════════════════════════
-const PWD_HASH = '7a092f801daaa8f90ff8449431dd2509b6d0365b18e32fd82b499a6a8d60310e'
+const PWD_HASH = window.STUDIO_CONFIG?.PWD_HASH || '7a092f801daaa8f90ff8449431dd2509b6d0365b18e32fd82b499a6a8d60310e'
 const AUTH_KEY = 'studio_auth_v2'
 
 async function sha256(str) {
@@ -3244,32 +3372,31 @@ function addScratchProject(){
   if(!memberId)return
   const member=state.members.find(m=>m.id===memberId)
   if(!member)return
-  const name=(prompt('New project name:')||'').trim()
-  if(!name)return
-  let brand=member.brands[0]
-  if(!brand){
-    brand=mkBrand(member.isMe?'My Projects':'Projects',[])
-    member.brands.push(brand)
+  showPromptModal('New project name','e.g. Spring 2027 Collection',(name)=>{
+    let brand=member.brands[0]
+    if(!brand){
+      brand=mkBrand(member.isMe?'My Projects':'Projects',[])
+      member.brands.push(brand)
+      openBrands.add(brand.id)
+    }
+    const p=mkProject(name)
+    brand.projects.push(p)
+    openMembers.add(member.id)
     openBrands.add(brand.id)
-  }
-  const p=mkProject(name)
-  brand.projects.push(p)
-  openMembers.add(member.id)
-  openBrands.add(brand.id)
-  save()
-  renderSidebar()
-  updateScratchProjects(memberId)
-  // Select the new project
-  const projSel=document.getElementById('scratchProjSel')
-  if(projSel){for(const opt of projSel.options){if(opt.value===p.id){opt.selected=true;break}}}
+    save()
+    renderSidebar()
+    updateScratchProjects(memberId)
+    const projSel=document.getElementById('scratchProjSel')
+    if(projSel){for(const opt of projSel.options){if(opt.value===p.id){opt.selected=true;break}}}
+  })
 }
 
 function fileNote(){
   const text=(state.scratchpad||'').trim()
-  if(!text){alert('Write something first!');return}
+  if(!text){showNotice('Write something first!');return}
   const projSel=document.getElementById('scratchProjSel')
   const projId=projSel?.value
-  if(!projId){alert('Please select a project to file this note to.');return}
+  if(!projId){showNotice('Please select a project to file this note to.');return}
   const found=findProject(projId)
   if(!found)return
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
