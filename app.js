@@ -230,8 +230,6 @@ let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
 let calFilter='all'     // 'all'|'tasks'|'meetings'
 let calOwnerFilter='all'
-let dashFilter='all'    // 'all'|'mine'|'critical'
-let dashBrandFilter='all'
 let showDone=false
 let sortByDue=false     // sort tasks by due date
 let calTravelFilter=false // show only travel items in calendar
@@ -251,6 +249,7 @@ let wlShowDone = false
 let selectedTaskIds = new Set()     // Set of "pid::tid" strings for multi-select
 let cmdBarOpen = false
 let cmdBarCtx = null                // optional context when opening cmd bar
+let wlRowCap = 200                  // virtualization cap: max rows rendered before 'show more'
 
 
 // ══════════════════════════════════════════════════════
@@ -598,16 +597,8 @@ function renderMain(){
     vt.style.display='none'
     bc.innerHTML=`<span class="bc-cur">${scopeLabel()}</span>`
     acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="openCmdBar()" title="Quick add (Cmd+K)">⌘K Quick add</button>
-      <button class="btn btn-ghost btn-sm" onclick="showView('home')" title="Dashboard">🏠 Dashboard</button>`
+      <button class="btn btn-ghost btn-sm" onclick="showView('allcal')" title="All Teams Calendar">📅 Calendar</button>`
     content.innerHTML=renderWorkList()
-    return
-  }
-
-  if(viewMode==='home'){
-    vt.style.display='none'
-    bc.innerHTML=`<span class="bc-cur">Studio W</span>`
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="showView('allcal')">All Teams Calendar</button>`
-    content.innerHTML=renderDashboard()
     return
   }
 
@@ -624,22 +615,6 @@ function renderMain(){
     bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">All Teams Calendar</span>`
     acts.innerHTML=''
     content.innerHTML=renderAllCalendar()
-    return
-  }
-
-  if(viewMode==='globaltasks'){
-    vt.style.display='none'
-    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">My Global Tasks</span>`
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="showView('home')">Back Home</button>`
-    content.innerHTML=renderGlobalTasks()
-    return
-  }
-
-  if(viewMode==='today'){
-    vt.style.display='none'
-    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">Today's Focus</span>`
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="showView('home')">Back Home</button>`
-    content.innerHTML=renderTodayView()
     return
   }
 
@@ -841,18 +816,38 @@ function renderWorkList(){
     </div>
     ${totalAll===0?`<div class="empty"><div class="empty-ico">✨</div><div class="empty-ttl">No tasks in this scope</div><div class="empty-sub">Press <kbd>⌘K</kbd> to quick add a task.</div></div>`:`
     <div class="wl-body">
-      ${groupOrder.map(k=>{
-        const g=groups[k]
-        return `<div class="wl-group">
-          <div class="wl-group-head">
-            <span class="wl-group-title">${esc(g.label)}</span>
-            <span class="wl-group-count">${g.items.length}</span>
-          </div>
-          <div class="wl-group-list">
-            ${g.items.map(renderWlRow).join('')}
-          </div>
-        </div>`
-      }).join('')}
+      ${(()=>{
+        let rendered=0
+        const cap=wlRowCap
+        const parts=[]
+        let hiddenTotal=0
+        for(const k of groupOrder){
+          const g=groups[k]
+          const remaining=Math.max(0,cap-rendered)
+          const shown=g.items.slice(0,remaining)
+          const hidden=g.items.length-shown.length
+          hiddenTotal+=hidden
+          rendered+=shown.length
+          parts.push(`<div class="wl-group">
+            <div class="wl-group-head">
+              <span class="wl-group-title">${esc(g.label)}</span>
+              <span class="wl-group-count">${g.items.length}${hidden?` · ${hidden} hidden`:''}</span>
+            </div>
+            <div class="wl-group-list">
+              ${shown.map(renderWlRow).join('')}
+              ${hidden?`<div class="wl-group-hidden"><em>${hidden} more hidden — filter or narrow scope to see them.</em></div>`:''}
+            </div>
+          </div>`)
+        }
+        if(hiddenTotal>0){
+          parts.push(`<div class="wl-cap-notice">
+            Showing ${rendered} of ${totalAll} tasks · ${hiddenTotal} hidden for performance.
+            <button class="btn btn-ghost btn-sm" onclick="setWlRowCap(wlRowCap+200)">Show 200 more</button>
+            <button class="btn btn-ghost btn-sm" onclick="setWlRowCap(99999)">Show all</button>
+          </div>`)
+        }
+        return parts.join('')
+      })()}
     </div>`}
   </div>`
 }
@@ -925,6 +920,7 @@ function countTasksForScope(type){
 function setScope(type,id){
   viewScope={type,id}
   selectedTaskIds.clear()
+  wlRowCap=200
   viewMode='worklist'
   render()
 }
@@ -932,6 +928,7 @@ function setWlFilter(v){wlFilter=v;renderMain();const inp=document.querySelector
 function setWlGroup(v){wlGroupBy=v;renderMain()}
 function setWlSort(v){wlSortBy=v;renderMain()}
 function setWlShowDone(v){wlShowDone=v;renderMain()}
+function setWlRowCap(n){wlRowCap=n;renderMain()}
 
 // ── MULTI-SELECT / BULK ACTIONS ──────────────────────────
 function toggleTaskSelect(pid,tid){
@@ -972,10 +969,26 @@ function bulkSetDue(v){forSelectedTasks(t=>{t.dueDate=v});save();renderMain();sh
 function bulkDelete(){
   const n=selectedTaskIds.size
   if(!n)return
-  showConfirm(`Delete ${n} selected task${n===1?'':'s'}?\nThis cannot be undone easily.`,()=>{
-    forSelectedTasks((t,p)=>{p.tasks=p.tasks.filter(x=>x.id!==t.id)})
-    selectedTaskIds.clear();save();renderMain();showNotice(`Deleted ${n} task${n===1?'':'s'}`)
-  },'Delete')
+  // Collect {pid, idx, task} BEFORE removing so we can restore at original positions
+  const items=[]
+  for(const key of selectedTaskIds){
+    const [pid,tid]=key.split('::')
+    const f=findProject(pid);if(!f)continue
+    const idx=f.p.tasks.findIndex(x=>x.id===tid)
+    if(idx<0)continue
+    items.push({pid,idx,task:f.p.tasks[idx]})
+  }
+  if(!items.length)return
+  // Sort descending by idx per project so splices don't shift earlier indexes
+  const grouped={}
+  items.forEach(r=>{(grouped[r.pid]=grouped[r.pid]||[]).push(r)})
+  for(const pid of Object.keys(grouped)){
+    const f=findProject(pid);if(!f)continue
+    grouped[pid].sort((a,b)=>b.idx-a.idx).forEach(r=>{f.p.tasks.splice(r.idx,1)})
+  }
+  selectedTaskIds.clear()
+  pushUndo('bulk',{items},`${n} task${n===1?'':'s'}`)
+  save();renderMain()
 }
 
 // ── COMMAND BAR (Cmd+K) ──────────────────────────────────
@@ -1107,7 +1120,6 @@ function cmdBarExec(raw){
     if(c==='week'||c==='thisweek'){setScope('thisweek');closeCmdBar();return}
     if(c==='all'){setScope('all');closeCmdBar();return}
     if(c==='cal'||c==='calendar'){showView('allcal');closeCmdBar();return}
-    if(c==='home'||c==='dashboard'){showView('home');closeCmdBar();return}
     showNotice('Unknown command: /'+parsed.cmd)
     return
   }
@@ -1155,9 +1167,6 @@ function onGlobalKeydown(e){
   if(e.key==='w' && !e.metaKey && !e.ctrlKey){
     if(_lastKey==='g'){e.preventDefault();showView('worklist');_lastKey=null;return}
   }
-  if(e.key==='h' && !e.metaKey && !e.ctrlKey){
-    if(_lastKey==='g'){e.preventDefault();showView('home');_lastKey=null;return}
-  }
   _lastKey=e.key
   setTimeout(()=>{if(_lastKey===e.key)_lastKey=null},900)
 }
@@ -1171,343 +1180,6 @@ function setProjectTab(tab){
   renderMain()
 }
 
-
-function renderDashboard(){
-  const projects=allActiveProjects().map(entry=>({...entry,health:projectHealth(entry)}))
-  const meId=state.members.find(m=>m.isMe)?.id||''
-  const brands=['all',...[...new Set(projects.map(({b})=>b.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b))]
-  const activeCount=projects.length
-  const critical=projects.filter(x=>x.health.status==='critical')
-  const atRisk=projects.filter(x=>x.health.status==='atrisk')
-  const completedTasks=allTasks().filter(({t,p})=>p.status!=='archived'&&(t.progress||'not-started')==='completed').length
-  const openTasks=allTasks().filter(({t,p})=>p.status!=='archived'&&(t.progress||'not-started')!=='completed').length
-  const totalMeetings=projects.reduce((n,{p})=>n+(p.meetings||[]).filter(mt=>mt.date&&mt.date>=todayIso()).length,0)
-  const spotlight=[...projects].sort((a,b)=>{
-    const score=x=>x.health.status==='critical'?3:x.health.status==='atrisk'?2:1
-    const da=a.health.upcoming?.dueDate||'9999-99-99'
-    const db=b.health.upcoming?.dueDate||'9999-99-99'
-    return score(b)-score(a) || da.localeCompare(db)
-  }).filter(item=>{
-    if(dashFilter==='mine'&&item.m.id!==meId)return false
-    if(dashFilter==='critical'&&item.health.status!=='critical')return false
-    if(dashBrandFilter!=='all'&&item.b.name!==dashBrandFilter)return false
-    return true
-  }).slice(0,12)
-  const alerts=computeAlerts()
-
-  // ── Scratchpad HTML ────────────────────────────────────
-  const defaultPersonId = state.members.find(m=>m.isMe)?.id || state.members[0]?.id || ''
-  const defaultProjs = defaultPersonId
-    ? (state.members.find(m=>m.id===defaultPersonId)?.brands.flatMap(b=>b.projects.filter(p=>p.status!=='archived'))||[])
-    : []
-  const hasScratch = !!(state.scratchpad||'').trim()
-  const scratchHtml = `<div class="scratchpad-wrap">
-    <div class="scratchpad-label">✏️ Quick Capture</div>
-    <textarea class="scratchpad-ta" id="scratchpadTa"
-      placeholder="Quick note / Capture idea…"
-      oninput="onScratchInput(this)"
-      rows="2">${esc(state.scratchpad||'')}</textarea>
-    <div class="scratchpad-actions${hasScratch?' visible':''}" id="scratchpadActions">
-      <span class="scratch-lbl">File to:</span>
-      <select class="scratch-sel" id="scratchPersonSel" onchange="onScratchPersonChange(this.value)">
-        ${state.members.map(m=>`<option value="${esc(m.id)}"${m.id===defaultPersonId?' selected':''}>${esc(m.name)}</option>`).join('')}
-      </select>
-      <select class="scratch-sel" id="scratchProjSel">
-        ${defaultProjs.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')||'<option value="">— no projects —</option>'}
-      </select>
-      <button class="scratch-plus" onclick="addScratchProject()" title="Create new project">＋</button>
-      <button class="btn btn-primary btn-xs" onclick="fileNote()">File Note →</button>
-      <span class="scratch-msg" id="scratchMsg"></span>
-    </div>
-  </div>`
-
-  // ── Travel section ─────────────────────────────────────
-  const travelItems = allTravelItems().slice(0,8)
-  const travelHtml = travelItems.length ? `<div class="dash-travel-section">
-    <div class="dash-travel-header">
-      <div>
-        <div class="dash-travel-title">✈️ Travel &amp; Logistics</div>
-        <div class="dash-travel-sub">Upcoming travel, flights, and logistics across all active projects</div>
-      </div>
-    </div>
-    <div class="dash-travel-list">
-      ${travelItems.map(({tr,p,m})=>{
-        const ico=tr.type==='Flight'?'✈️':tr.type==='Hotel'?'🏨':'🏭'
-        const dateStr=tr.startDate&&tr.endDate&&tr.startDate!==tr.endDate
-          ?`${friendly(tr.startDate)} – ${friendly(tr.endDate)}`
-          :friendly(tr.startDate||tr.endDate||'')
-        return `<div class="dash-travel-item" onclick="goProject('${p.id}')">
-          <div class="dash-travel-icon">${ico}</div>
-          <div class="dash-travel-content">
-            <div class="dash-travel-name">${esc(tr.title)}</div>
-            <div class="dash-travel-meta">${esc(p.name)} · ${esc(m.name)}${dateStr?' · '+esc(dateStr):''}</div>
-          </div>
-          <div class="dash-travel-badge">${esc(tr.type)}</div>
-        </div>`
-      }).join('')}
-    </div>
-  </div>` : ''
-
-  return `<div class="dash">
-    <div class="dash-hero">
-      <div class="dash-panel dash-hero-main">
-        <div class="dash-kicker">Studio Snapshot</div>
-        <div class="dash-title">Your product development dashboard</div>
-        <div class="dash-sub">Use this as your home base for the work in motion right now: active projects, overdue tasks, critical timelines, and the next reviews or sample milestones that need attention.</div>
-        <div class="dash-actions">
-          <button class="btn btn-primary" onclick="showView('allcal')">Open All Teams Calendar</button>
-          <button class="btn btn-ghost" onclick="showSyncFromHome()">Cloud Sync & Backup</button>
-        </div>
-      </div>
-      <div class="dash-panel dash-hero-side">
-        <div class="dash-side-title">Needs Attention</div>
-        <div class="dash-alert-list">
-          ${alerts.overdue.slice(0,4).map(({t,p,m})=>`<div class="dash-alert critical" onclick="goProject('${p.id}')" style="cursor:pointer">
-            <div class="dash-alert-dot" style="background:var(--red)"></div>
-            <div class="dash-alert-copy"><strong>${esc(p.name)}</strong>${esc(m.name)} · overdue on ${esc(t.text)}</div>
-          </div>`).join('') || ''}
-          ${alerts.upcoming.slice(0,3).map(({t,p,m})=>`<div class="dash-alert upcoming" onclick="goProject('${p.id}')" style="cursor:pointer">
-            <div class="dash-alert-dot" style="background:var(--warn)"></div>
-            <div class="dash-alert-copy"><strong>${esc(p.name)}</strong>${esc(m.name)} · ${esc(t.text)} due ${friendly(t.dueDate)}</div>
-          </div>`).join('') || ''}
-          ${(!alerts.overdue.length&&!alerts.upcoming.length)?`<div class="dash-alert">
-            <div class="dash-alert-dot" style="background:var(--ok)"></div>
-            <div class="dash-alert-copy"><strong>Nothing critical right now</strong>Your active project timelines are clear for the moment.</div>
-          </div>`:''}
-        </div>
-      </div>
-    </div>
-    ${scratchHtml}
-    <div class="dash-stats">
-      <div class="stat-card"><div class="stat-label">Active Projects</div><div class="stat-value">${activeCount}</div><div class="stat-sub">${critical.length} critical and ${atRisk.length} at-risk timelines</div></div>
-      <div class="stat-card"><div class="stat-label">Open Tasks</div><div class="stat-value">${openTasks}</div><div class="stat-sub">${completedTasks} completed across active projects</div></div>
-      <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value">${alerts.overdue.length}</div><div class="stat-sub">Tasks that already missed their due date</div></div>
-      <div class="stat-card"><div class="stat-label">Upcoming Meetings</div><div class="stat-value">${totalMeetings}</div><div class="stat-sub">Scheduled ahead across active projects</div></div>
-    </div>
-    <div class="dash-grid">
-      <div class="dash-panel dash-section">
-        <div class="dash-section-title">Current Projects</div>
-        <div class="dash-filter-row">
-          <div class="dash-filter-chips">
-            <button class="dash-filter-btn ${dashFilter==='all'?'on':''}" onclick="setDashFilter('all')">All</button>
-            <button class="dash-filter-btn ${dashFilter==='mine'?'on':''}" onclick="setDashFilter('mine')">Only My Projects</button>
-            <button class="dash-filter-btn ${dashFilter==='critical'?'on':''}" onclick="setDashFilter('critical')">Critical</button>
-          </div>
-          <select class="dash-brand-select" onchange="setDashBrandFilter(this.value)">
-            ${brands.map(name=>`<option value="${esc(name)}" ${(name===dashBrandFilter)?'selected':''}>${name==='all'?'All Brands':esc(name)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="dash-project-list">
-          ${spotlight.map(({p,b,m,health})=>{
-            const pct=Math.round((health.done/health.total)*100)
-            const badgeClass=health.status==='critical'?'critical':health.status==='atrisk'?'atrisk':'ontrack'
-            const badgeLabel=health.status==='critical'?'Critical':health.status==='atrisk'?'At Risk':'On Track'
-            const subtitle=health.overdue
-              ? `${health.overdue} overdue task${health.overdue===1?'':'s'}`
-              : health.upcoming?.dueDate
-                ? `Next due ${friendly(health.upcoming.dueDate)}`
-                : `No dated tasks yet`
-            return `<div class="dash-project" onclick="goProject('${p.id}')">
-              <div class="dash-project-main">
-                <div class="dash-project-top">
-                  <div class="dash-project-name">${esc(p.name)}</div>
-                  <div class="dash-owner"><span class="dash-owner-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</div>
-                </div>
-                <div class="dash-project-meta">${subtitle}</div>
-              </div>
-              <div class="dash-project-side">
-                <div class="dash-badge ${badgeClass}">${badgeLabel}</div>
-                <div class="dash-project-track"><div class="dash-project-fill ${badgeClass}" style="width:${pct}%"></div></div>
-                <div class="dash-project-meta">${health.done}/${health.total} tasks complete</div>
-              </div>
-            </div>`
-          }).join('') || `<div class="empty"><div class="empty-ico">📁</div><div class="empty-ttl">No active projects yet</div><div class="empty-sub">Create a project from the sidebar to start building your dashboard.</div></div>`}
-        </div>
-      </div>
-      <div class="dash-panel dash-section">
-        <div class="dash-section-title">Quick Snapshot</div>
-        <div class="dash-mini-list">
-          <div class="dash-mini-item"><strong>Critical timelines</strong><span>${critical.length?`${critical.length} project${critical.length===1?' is':'s are'} currently blocked by overdue tasks.`:'No projects are currently flagged as critical.'}</span></div>
-          <div class="dash-mini-item"><strong>Upcoming reviews</strong><span>${alerts.upcoming.slice(0,3).map(({t,p})=>`${p.name}: ${t.text}`).join(' · ') || 'No urgent review deadlines in the next week.'}</span></div>
-          <div class="dash-mini-item"><strong>Calendar overview</strong><span>Use the All Teams Calendar for a cross-team timeline, then filter by owner when you want to isolate one person’s workload.</span></div>
-        </div>
-      </div>
-    </div>
-    ${travelHtml}
-  </div>`
-}
-
-function setDashFilter(v){dashFilter=v;renderMain()}
-function setDashBrandFilter(v){dashBrandFilter=v;renderMain()}
-
-function renderGlobalTasks(){
-  const me=state.members.find(m=>m.isMe)
-  if(!me)return `<div class="empty"><div class="empty-ico">☑️</div><div class="empty-ttl">No personal workspace found</div></div>`
-  const tasks=[]
-  for(const b of me.brands){
-    for(const p of b.projects){
-      if(p.status==='archived')continue
-      for(const t of p.tasks){
-        const prog=t.progress||'not-started'
-        if(prog==='completed')continue
-        tasks.push({t,p,b,m:me})
-      }
-    }
-  }
-  tasks.sort((a,b)=>{
-    const ad=a.t.dueDate||'9999-99-99'
-    const bd=b.t.dueDate||'9999-99-99'
-    const ao=a.t.dueDate&&a.t.dueDate<todayIso()?0:1
-    const bo=b.t.dueDate&&b.t.dueDate<todayIso()?0:1
-    return ao-bo || ad.localeCompare(bd) || a.p.name.localeCompare(b.p.name)
-  })
-  if(!tasks.length){
-    return `<div class="empty"><div class="empty-ico">☑️</div><div class="empty-ttl">No open global tasks</div><div class="empty-sub">You’re clear across all of your active projects.</div></div>`
-  }
-  return `<div class="gtasks">${tasks.map(({t,p,b})=>{
-    const cls=!t.dueDate?'nodate':t.dueDate<todayIso()?'overdue':'upcoming'
-    const lbl=!t.dueDate?'No date':t.dueDate<todayIso()?`Overdue · ${friendly(t.dueDate)}`:`Due ${friendly(t.dueDate)}`
-    return `<div class="gtask-card" onclick="goProject('${p.id}')">
-      <div class="gtask-top">
-        <div class="gtask-title">${esc(t.text)}</div>
-        <div class="gtask-due ${cls}">${esc(lbl)}</div>
-      </div>
-      <div class="gtask-meta">${esc(b.name)} · ${esc(p.name)}${t.startDate?` · Starts ${friendly(t.startDate)}`:''}</div>
-    </div>`
-  }).join('')}</div>`
-}
-
-// ══════════════════════════════════════════════════════
-//  TODAY / UPCOMING VIEW
-// ══════════════════════════════════════════════════════
-function renderTodayView(){
-  const today=todayIso()
-  const todayDate=new Date(today+'T00:00:00')
-  const endOfWeek=new Date(todayDate);endOfWeek.setDate(endOfWeek.getDate()+7)
-  const endOfNext=new Date(todayDate);endOfNext.setDate(endOfNext.getDate()+14)
-  const eow=isoDate(endOfWeek),eon=isoDate(endOfNext)
-  const priorityOrder={urgent:0,high:1,medium:2,low:3,'':4}
-  const sortTasks=arr=>[...arr].sort((a,b)=>{
-    const pa=priorityOrder[a.t.priority||'']??4
-    const pb=priorityOrder[b.t.priority||'']??4
-    if(pa!==pb)return pa-pb
-    return(a.t.dueDate||'9999').localeCompare(b.t.dueDate||'9999')
-  })
-
-  const tasks=[]
-  for(const m of state.members)for(const b of m.brands)for(const p of b.projects){
-    if(p.status==='archived')continue
-    for(const t of p.tasks){
-      if((t.progress||'not-started')==='completed')continue
-      tasks.push({t,p,b,m})
-    }
-  }
-
-  const overdue=tasks.filter(x=>x.t.dueDate&&x.t.dueDate<today)
-  const dueToday=tasks.filter(x=>x.t.dueDate===today)
-  const thisWeek=tasks.filter(x=>x.t.dueDate>today&&x.t.dueDate<=eow)
-  const nextWeek=tasks.filter(x=>x.t.dueDate>eow&&x.t.dueDate<=eon)
-  const noDue=tasks.filter(x=>!x.t.dueDate)
-  const totalOpen=overdue.length+dueToday.length+thisWeek.length+nextWeek.length+noDue.length
-
-  function taskRow({t,p,m}){
-    const prio=t.priority||''
-    const prioHtml=prio?`<span class="prio-badge prio-${prio}">${prio.charAt(0).toUpperCase()+prio.slice(1)}</span>`:''
-    const prog=t.progress||'not-started'
-    const isOverdue=t.dueDate&&t.dueDate<today
-    return `<div class="today-task-row">
-      <input type="checkbox" class="task-chk" ${prog==='completed'?'checked':''} onchange="toggleTaskGlobal('${esc(t.id)}','${esc(p.id)}',this.checked)">
-      <div class="today-task-body">
-        <div class="today-task-text ${prog==='completed'?'done':''}">${esc(t.text)}</div>
-        <div class="today-task-meta">
-          <span class="today-task-proj" onclick="goProject('${esc(p.id)}')" style="color:${m.color}">${esc(p.name)}</span>
-          ${t.dueDate?`<span class="today-task-due" style="${isOverdue?'color:var(--red)':''}">${isOverdue?'Overdue · ':''}${esc(friendly(t.dueDate))}</span>`:''}
-          ${prioHtml}
-          ${t.assignee?`<span class="today-task-assignee">${esc(state.members.find(mx=>mx.id===t.assignee)?.name||'')}</span>`:''}
-        </div>
-      </div>
-      <select class="prog-sel prog-${prog}" onchange="toggleTaskProgressGlobal('${esc(t.id)}','${esc(p.id)}',this.value)">
-        <option value="not-started" ${prog==='not-started'?'selected':''}>Not Started</option>
-        <option value="in-progress" ${prog==='in-progress'?'selected':''}>In Progress</option>
-        <option value="completed" ${prog==='completed'?'selected':''}>Completed</option>
-      </select>
-    </div>`
-  }
-
-  function section(label,items,cls=''){
-    if(!items.length)return ''
-    return `<div class="today-section">
-      <div class="today-section-hdr ${cls}">
-        <span class="today-section-title">${label}</span>
-        <span class="today-section-count">${items.length}</span>
-      </div>
-      <div class="today-task-list">${sortTasks(items).map(taskRow).join('')}</div>
-    </div>`
-  }
-
-  // Build project options for quick-add
-  const allActiveProjs=allActiveProjects()
-  const projOptions=allActiveProjs.map(({p,b,m})=>
-    `<option value="${esc(p.id)}">[${esc(m.name)}] ${esc(p.name)}</option>`
-  ).join('')
-
-  return `<div class="today-view">
-    <div class="today-hero">
-      <div class="today-date-label">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
-      <div class="today-headline">Today's Focus</div>
-      <div class="today-sub">${totalOpen} open task${totalOpen!==1?'s':''} across all active projects${overdue.length?` &nbsp;·&nbsp; <strong style="color:var(--red)">${overdue.length} overdue</strong>`:''}</div>
-    </div>
-    <div class="today-quick-add">
-      <input class="today-qa-inp" id="todayQAText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTaskFromToday()">
-      <select class="today-qa-proj" id="todayQAProj">
-        ${projOptions||'<option value="">— no active projects —</option>'}
-      </select>
-      <input type="date" class="add-date-inp" id="todayQADue" title="Due date">
-      <button class="btn btn-primary btn-sm" onclick="addTaskFromToday()">Add</button>
-    </div>
-    ${section('Overdue',overdue,'overdue-hdr')}
-    ${section('Due Today',dueToday,'today-hdr')}
-    ${section('This Week',thisWeek,'week-hdr')}
-    ${section('Next Week',nextWeek)}
-    ${section('No Due Date',noDue,'nodate-hdr')}
-    ${totalOpen===0?`<div class="empty" style="margin-top:24px"><div class="empty-ico">🎉</div><div class="empty-ttl">All clear!</div><div class="empty-sub">No open tasks right now. Add one above or navigate into a project.</div></div>`:''}
-  </div>`
-}
-
-function toggleTaskGlobal(tid,pid,checked){
-  const found=findProject(pid)
-  if(!found)return
-  const t=found.p.tasks.find(t=>t.id===tid)
-  if(t){t.done=checked;t.progress=checked?'completed':'not-started';save();renderMain()}
-}
-
-function toggleTaskProgressGlobal(tid,pid,v){
-  const found=findProject(pid)
-  if(!found)return
-  const t=found.p.tasks.find(t=>t.id===tid)
-  if(t){t.progress=v;t.done=(v==='completed');save();renderMain()}
-}
-
-function addTaskFromToday(){
-  const txt=(document.getElementById('todayQAText')?.value||'').trim()
-  const projId=document.getElementById('todayQAProj')?.value
-  const due=document.getElementById('todayQADue')?.value||''
-  if(!txt||!projId){
-    const inp=document.getElementById('todayQAText')
-    if(inp){inp.focus();inp.style.borderColor='var(--red)';setTimeout(()=>inp.style.borderColor='',1200)}
-    return
-  }
-  const found=findProject(projId)
-  if(!found)return
-  found.p.tasks.push({id:uid(),text:txt,startDate:'',dueDate:due,done:false,progress:'not-started',priority:''})
-  save()
-  // Clear inputs and re-render
-  const inp=document.getElementById('todayQAText')
-  const dateInp=document.getElementById('todayQADue')
-  if(inp){inp.value='';inp.focus()}
-  if(dateInp)dateInp.value=''
-  renderMain()
-}
 
 // ══════════════════════════════════════════════════════
 //  DETAIL VIEW
@@ -2724,10 +2396,6 @@ function showView(v){
   viewMode=v;closeMobileSidebar();render()
 }
 
-function showSyncFromHome(){
-  showView('sync')
-}
-
 function projDragStart(e,type,id){
   const tag=e.target.tagName
   if(['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(tag)||e.target.isContentEditable){
@@ -2928,6 +2596,17 @@ function doUndo(){
   const toast=document.getElementById('undoToast')
   if(toast)toast.classList.remove('visible')
   const f=item.data.pid?findProject(item.data.pid):null
+  if(item.type==='bulk'){
+    // Restore multiple tasks — each with its pid+idx+task
+    // Sort ascending by idx so splices don't shift later items
+    const arr=[...item.data.items].sort((a,b)=>a.idx-b.idx)
+    for(const r of arr){
+      const fp=findProject(r.pid);if(!fp)continue
+      const idx=Math.min(r.idx,fp.p.tasks.length)
+      fp.p.tasks.splice(idx,0,r.task)
+    }
+    save();render();return
+  }
   if(item.type==='task'&&f){
     const idx=Math.min(item.data.idx,f.p.tasks.length)
     f.p.tasks.splice(idx,0,item.data.task)
@@ -3895,90 +3574,6 @@ function initTheme(){
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
     if(themeMode==='system')applyTheme('system')
   })
-}
-
-// ══════════════════════════════════════════════════════
-//  QUICK CAPTURE — SCRATCHPAD
-// ══════════════════════════════════════════════════════
-function onScratchInput(el){
-  state.scratchpad=el.value
-  autoGrow(el)
-  const actions=document.getElementById('scratchpadActions')
-  if(actions){
-    if(el.value.trim())actions.classList.add('visible')
-    else actions.classList.remove('visible')
-  }
-}
-
-function onScratchPersonChange(memberId){
-  updateScratchProjects(memberId)
-}
-
-function updateScratchProjects(memberId){
-  const projSel=document.getElementById('scratchProjSel')
-  if(!projSel)return
-  const member=state.members.find(m=>m.id===memberId)
-  if(!member){projSel.innerHTML='<option value="">— no projects —</option>';return}
-  const projs=member.brands.flatMap(b=>b.projects.filter(p=>p.status!=='archived'))
-  projSel.innerHTML=projs.length
-    ? projs.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
-    : '<option value="">— no projects —</option>'
-}
-
-function addScratchProject(){
-  const personSel=document.getElementById('scratchPersonSel')
-  const memberId=personSel?.value
-  if(!memberId)return
-  const member=state.members.find(m=>m.id===memberId)
-  if(!member)return
-  showPromptModal('New project name','e.g. Spring 2027 Collection',(name)=>{
-    let brand=member.brands[0]
-    if(!brand){
-      brand=mkBrand(member.isMe?'My Projects':'Projects',[])
-      member.brands.push(brand)
-      openBrands.add(brand.id)
-    }
-    const p=mkProject(name)
-    brand.projects.push(p)
-    openMembers.add(member.id)
-    openBrands.add(brand.id)
-    save()
-    renderSidebar()
-    updateScratchProjects(memberId)
-    const projSel=document.getElementById('scratchProjSel')
-    if(projSel){for(const opt of projSel.options){if(opt.value===p.id){opt.selected=true;break}}}
-  })
-}
-
-function fileNote(){
-  const text=(state.scratchpad||'').trim()
-  if(!text){showNotice('Write something first!');return}
-  const projSel=document.getElementById('scratchProjSel')
-  const projId=projSel?.value
-  if(!projId){showNotice('Please select a project to file this note to.');return}
-  const found=findProject(projId)
-  if(!found)return
-  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-  const timestamp=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
-  found.p.notes.unshift({
-    id:uid(),
-    title:`Quick Note — ${timestamp}`,
-    body:`<p>${text.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</p>`,
-    date,
-    open:false
-  })
-  state.scratchpad=''
-  save()
-  // Clear the UI
-  const ta=document.getElementById('scratchpadTa')
-  if(ta){ta.value='';ta.style.height='auto'}
-  const actions=document.getElementById('scratchpadActions')
-  if(actions)actions.classList.remove('visible')
-  const msg=document.getElementById('scratchMsg')
-  if(msg){
-    msg.textContent=`✓ Filed to "${found.p.name}"`
-    setTimeout(()=>{if(msg)msg.textContent=''},3000)
-  }
 }
 
 // ══════════════════════════════════════════════════════
