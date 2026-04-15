@@ -395,6 +395,20 @@ function sbDrop(e,type,id,parentId){
 // ══════════════════════════════════════════════════════
 //  SIDEBAR RENDER
 // ══════════════════════════════════════════════════════
+function toggleProjectArchive(pid){
+  const f=findProject(pid);if(!f)return
+  if(f.p.status==='archived'){
+    f.p.status='active'
+    save();render()
+  } else {
+    showConfirm(`Archive "${f.p.name}"?\nIt will be hidden from the sidebar — use "Show archived" to access it later.`,()=>{
+      f.p.status='archived'
+      if(selId===pid){selId=null}
+      save();render()
+    },'Archive')
+  }
+}
+
 function renderSidebar(){
   const tree=document.getElementById('sbTree')
   const{overdue,upcoming}=computeAlerts()
@@ -425,6 +439,12 @@ function renderSidebar(){
   // Team
   const team=state.members.filter(m=>!m.isMe)
   if(team.length){h+=`<div class="sb-lbl" style="margin-top:4px">Team</div>`;team.forEach(m=>{h+=renderMember(m)})}
+  // Update archived count badge in footer
+  const archCount=state.members.reduce((n,m)=>n+m.brands.reduce((nb,b)=>nb+b.projects.filter(p=>p.status==='archived').length,0),0)
+  const archIcoEl=document.getElementById('archIco')
+  const archLblEl=document.getElementById('archLbl')
+  if(archIcoEl)archIcoEl.textContent=state.showArchived?'👁':'📦'
+  if(archLblEl)archLblEl.textContent=state.showArchived?'Hide archived':(archCount?`Show archived (${archCount})`:'Show archived')
 
   h+=`<button class="sb-add lv0" onclick="openModal('member')">＋ Add team member</button>`
   tree.innerHTML=h
@@ -461,6 +481,13 @@ function renderMember(m){
         ondrop="sbDrop(event,'project','${p.id}','${b.id}')"
         onclick="goProject('${p.id}')">
         <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
+        ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
+        <div class="sb-proj-actions">
+          <button class="sb-act-btn" title="${p.status==='archived'?'Unarchive project':'Archive project'}"
+            onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
+            ${p.status==='archived'?'↩':'📦'}
+          </button>
+        </div>
       </div>`
     })
     const defaultBrandId=m.brands[0]?.id
@@ -514,6 +541,13 @@ function renderBrand(b,memberId){
       ondrop="sbDrop(event,'project','${p.id}','${b.id}')"
       onclick="goProject('${p.id}')">
       <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
+      ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
+      <div class="sb-proj-actions">
+        <button class="sb-act-btn" title="${p.status==='archived'?'Unarchive project':'Archive project'}"
+          onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
+          ${p.status==='archived'?'↩':'📦'}
+        </button>
+      </div>
     </div>`
   })
   h+=`<button class="sb-add lv2" onclick="openModal('project','${b.id}')">＋ Add project</button></div>`
@@ -1151,7 +1185,7 @@ function taskHTML(t){
           onblur="updateTaskNote('${t.id}',this.value)">${esc(t.note||'')}</textarea>
       </div>
     </div>
-    <button class="task-note-btn${hasNote?' has-note':''}" onclick="toggleTaskNote('${t.id}')" title="${hasNote?'View/edit task note':'Add a note to this task'}">${hasNote?'📝':'💬'}</button>
+    <button class="task-note-btn${hasNote?' has-note':''}" onclick="toggleTaskNote('${t.id}')" title="${hasNote?'View/edit task note':'Add a note to this task'}">${hasNote?'📝 Note':'+ Note'}</button>
     <button class="task-del" onclick="removeTask('${t.id}')" title="Remove">×</button>
   </div>`
 }
