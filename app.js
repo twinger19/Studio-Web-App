@@ -1163,6 +1163,13 @@ function onGlobalKeydown(e){
 }
 let _lastKey=null
 let _globalKeyBound=false
+let activeProjectTab='tasks'   // 'summary'|'tasks'|'notes'|'meetings'|'travel'|'links'
+let _lastTabProjectId=null
+
+function setProjectTab(tab){
+  activeProjectTab=tab
+  renderMain()
+}
 
 
 function renderDashboard(){
@@ -1514,141 +1521,129 @@ function renderDetail(p,m,b){
   const meetings=[...(p.meetings||[])].sort((a,b)=>a.date.localeCompare(b.date))
   const travel=[...(p.travel||[])].sort((a,b)=>(a.startDate||a.endDate||'').localeCompare(b.startDate||b.endDate||''))
 
+  // Reset tab when switching projects
+  if(_lastTabProjectId!==p.id){
+    _lastTabProjectId=p.id
+    activeProjectTab='tasks'
+  }
+
+  const taskCount=notStarted.length+inProg.length
+  const tabs=[
+    {id:'summary',label:'Summary',ico:'📋',count:null},
+    {id:'tasks',label:'Tasks',ico:'✅',count:taskCount||null},
+    {id:'notes',label:'Notes',ico:'📝',count:p.notes.length||null},
+    {id:'meetings',label:'Meetings',ico:'🤝',count:meetings.length||null},
+    {id:'travel',label:'Travel',ico:'✈️',count:travel.length||null},
+    {id:'links',label:'Links',ico:'🔗',count:p.links.length||null}
+  ]
+
+  const summaryPanel=`<div class="tab-panel">
+    <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
+      ${isArch?'disabled':''}
+      onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
+    <div class="proj-dates-row">
+      <div class="proj-date-field">
+        <strong>Project Start</strong>
+        <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
+          onchange="updateProjStart(this.value)" title="Overall project start date">
+      </div>
+      <div class="proj-date-field">
+        <strong>Project End</strong>
+        <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
+          onchange="updateProjEnd(this.value)" title="Overall project end date">
+      </div>
+    </div>
+  </div>`
+
+  const tasksPanel=`<div class="tab-panel">
+    <div class="tab-panel-toolbar">
+      <div class="tab-panel-meta">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</div>
+      <button class="sort-toggle-btn${sortByDue?' on':''}" onclick="toggleSortByDue()" title="Sort tasks by due date">📅 ${sortByDue?'Date ↑':'Sort by date'}</button>
+    </div>
+    ${!isArch?`<div class="task-template-row">
+      <div class="task-template-copy">Use your standard product development workflow as a starting point, then plug in project-specific dates after the tasks are created.</div>
+      <button class="btn btn-ghost btn-sm" onclick="generateProductDevelopmentTasks()">Generate Product Development Tasks</button>
+    </div>`:''}
+    <div id="taskList">${sortedTaskList(shown).map(t=>taskHTML(t)).join('')||'<div class="tab-empty">No open tasks. Add one below or press ⌘K.</div>'}</div>
+    ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
+    ${!isArch?`<div class="add-task-row">
+      <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
+      <select class="prio-sel" id="newTPrio" title="Priority">
+        <option value="">– Priority</option>
+        <option value="urgent">🔴 Urgent</option>
+        <option value="high">🟠 High</option>
+        <option value="medium">🔵 Medium</option>
+        <option value="low">⚪ Low</option>
+      </select>
+      <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
+      <span style="font-size:11px;color:var(--tm);opacity:.5">→</span>
+      <input type="date" class="add-date-inp" id="newTDue" title="Due date">
+      <button class="btn btn-primary btn-sm" onclick="doAddTask()">Add</button>
+    </div>`:''}
+  </div>`
+
+  const notesPanel=`<div class="tab-panel">
+    <div id="noteList">${p.notes.map(n=>noteHTML(n)).join('')||'<div class="tab-empty">No notes yet.</div>'}</div>
+    ${!isArch?`<button class="add-note-btn" onclick="doAddNote()">＋ Add note</button>`:''}
+  </div>`
+
+  const meetingsPanel=`<div class="tab-panel">
+    <div id="meetingList">${meetings.map(mt=>meetingHTML(mt)).join('')||'<div class="tab-empty">No meetings scheduled.</div>'}</div>
+    ${!isArch?`<div class="add-meeting-row">
+      <input class="add-meeting-inp" id="newMTitle" placeholder="Meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
+      <input type="date" class="add-date-inp" id="newMDate" title="Meeting date">
+      <button class="btn btn-primary btn-sm" onclick="doAddMeeting()">Add</button>
+    </div>`:''}
+  </div>`
+
+  const travelPanel=`<div class="tab-panel">
+    <div id="travelList">${travel.map(tr=>travelHTML(tr)).join('')||'<div class="tab-empty">No travel or logistics entries.</div>'}</div>
+    ${!isArch?`<div class="add-travel-row">
+      <select class="travel-type-sel" id="newTravelType">
+        <option>Flight</option>
+        <option>Hotel</option>
+        <option>Factory Contact</option>
+      </select>
+      <input class="travel-link-inp" id="newTravelTitle" placeholder="Details / title" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
+      <input type="date" class="travel-link-inp" id="newTravelStart" style="width:145px">
+      <input type="date" class="travel-link-inp" id="newTravelEnd" style="width:145px">
+      <input class="travel-link-inp" id="newTravelLink" placeholder="https://…" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
+      <button class="btn btn-primary btn-sm" onclick="doAddTravel()">Add</button>
+    </div>`:''}
+  </div>`
+
+  const linksPanel=`<div class="tab-panel">
+    <div id="linkList">${p.links.map(l=>linkHTML(l)).join('')||'<div class="tab-empty">No links added.</div>'}</div>
+    ${!isArch?`<div class="add-link-row">
+      <input class="link-inp" id="newLLbl" placeholder="Label" style="width:130px">
+      <input class="link-inp" id="newLUrl" placeholder="https://…" style="flex:1" onkeydown="if(event.key==='Enter')doAddLink()">
+      <button class="btn btn-primary btn-sm" onclick="doAddLink()">Add</button>
+    </div>`:''}
+  </div>`
+
+  const panelMap={summary:summaryPanel,tasks:tasksPanel,notes:notesPanel,meetings:meetingsPanel,travel:travelPanel,links:linksPanel}
+  const activePanel=panelMap[activeProjectTab]||tasksPanel
+
   return `
     ${isArch?`<div class="arch-banner">📦 Archived — unarchive to edit</div>`:''}
-    <input class="proj-title-input" value="${esc(p.name)}" ${isArch?'disabled':''}
-      onblur="updateProjName(this.value)" onkeydown="if(event.key==='Enter')this.blur()">
-    <div class="proj-meta">
-      <span class="badge badge-${p.status}">${p.status}</span>
-      <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
-      ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
-    </div>
-
-    <!-- SUMMARY -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">📋 Project Summary</div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
-          ${isArch?'disabled':''}
-          onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
-        <div class="proj-dates-row">
-          <div class="proj-date-field">
-            <strong>Project Start</strong>
-            <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
-              onchange="updateProjStart(this.value)" title="Overall project start date">
-          </div>
-          <div class="proj-date-field">
-            <strong>Project End</strong>
-            <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
-              onchange="updateProjEnd(this.value)" title="Overall project end date">
-          </div>
-        </div>
+    <div class="proj-hdr">
+      <input class="proj-title-input" value="${esc(p.name)}" ${isArch?'disabled':''}
+        onblur="updateProjName(this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+      <div class="proj-meta">
+        <span class="badge badge-${p.status}">${p.status}</span>
+        <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
+        ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
       </div>
     </div>
-
-    <!-- TASKS -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">✅ Tasks
-          <span class="card-cnt">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</span>
-        </div>
-        <button class="sort-toggle-btn${sortByDue?' on':''}" onclick="event.stopPropagation();toggleSortByDue()" title="Sort tasks by due date">📅 ${sortByDue?'Date ↑':'Sort by date'}</button>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        ${!isArch?`<div class="task-template-row">
-          <div class="task-template-copy">Use your standard product development workflow as a starting point, then plug in project-specific dates after the tasks are created.</div>
-          <button class="btn btn-ghost btn-sm" onclick="generateProductDevelopmentTasks()">Generate Product Development Tasks</button>
-        </div>`:''}
-        <div id="taskList">${sortedTaskList(shown).map(t=>taskHTML(t)).join('')}</div>
-        ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
-        ${!isArch?`<div class="add-task-row">
-          <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
-          <select class="prio-sel" id="newTPrio" title="Priority">
-            <option value="">– Priority</option>
-            <option value="urgent">🔴 Urgent</option>
-            <option value="high">🟠 High</option>
-            <option value="medium">🔵 Medium</option>
-            <option value="low">⚪ Low</option>
-          </select>
-          <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
-          <span style="font-size:11px;color:var(--tm);opacity:.5">→</span>
-          <input type="date" class="add-date-inp" id="newTDue" title="Due date">
-          <button class="btn btn-primary btn-sm" onclick="doAddTask()">Add</button>
-        </div>`:''}
-      </div>
+    <div class="proj-tabs">
+      ${tabs.map(tb=>`<button class="proj-tab ${activeProjectTab===tb.id?'on':''}" onclick="setProjectTab('${tb.id}')">
+        <span class="proj-tab-ico">${tb.ico}</span>
+        <span class="proj-tab-lbl">${tb.label}</span>
+        ${tb.count?`<span class="proj-tab-ct">${tb.count}</span>`:''}
+      </button>`).join('')}
     </div>
-
-    <!-- NOTES -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">📝 Notes<span class="card-cnt">${p.notes.length}</span></div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <div id="noteList">${p.notes.map(n=>noteHTML(n)).join('')}</div>
-        ${!isArch?`<button class="add-note-btn" onclick="doAddNote()">＋ Add note</button>`:''}
-      </div>
-    </div>
-
-    <!-- MEETINGS -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">🤝 Meetings<span class="card-cnt">${meetings.length}</span></div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <div id="meetingList">
-          ${meetings.map(mt=>meetingHTML(mt)).join('')}
-        </div>
-        ${!isArch?`<div class="add-meeting-row">
-          <input class="add-meeting-inp" id="newMTitle" placeholder="Meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
-          <input type="date" class="add-date-inp" id="newMDate" title="Meeting date">
-          <button class="btn btn-primary btn-sm" onclick="doAddMeeting()">Add</button>
-        </div>`:''}
-      </div>
-    </div>
-
-    <!-- TRAVEL -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">✈️ Travel &amp; Logistics<span class="card-cnt">${travel.length}</span></div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <div id="travelList">${travel.map(tr=>travelHTML(tr)).join('')}</div>
-        ${!isArch?`<div class="add-travel-row">
-          <select class="travel-type-sel" id="newTravelType">
-            <option>Flight</option>
-            <option>Hotel</option>
-            <option>Factory Contact</option>
-          </select>
-          <input class="travel-link-inp" id="newTravelTitle" placeholder="Details / title" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
-          <input type="date" class="travel-link-inp" id="newTravelStart" style="width:145px">
-          <input type="date" class="travel-link-inp" id="newTravelEnd" style="width:145px">
-          <input class="travel-link-inp" id="newTravelLink" placeholder="https://…" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')doAddTravel()">
-          <button class="btn btn-primary btn-sm" onclick="doAddTravel()">Add</button>
-        </div>`:''}
-      </div>
-    </div>
-
-    <!-- LINKS -->
-    <div class="card">
-      <div class="card-head open" onclick="toggleCard(this)">
-        <div class="card-ttl">🔗 Links<span class="card-cnt">${p.links.length}</span></div>
-        <span class="card-chev open">▶</span>
-      </div>
-      <div class="card-body open">
-        <div id="linkList">${p.links.map(l=>linkHTML(l)).join('')}</div>
-        ${!isArch?`<div class="add-link-row">
-          <input class="link-inp" id="newLLbl" placeholder="Label" style="width:130px">
-          <input class="link-inp" id="newLUrl" placeholder="https://…" style="flex:1" onkeydown="if(event.key==='Enter')doAddLink()">
-          <button class="btn btn-primary btn-sm" onclick="doAddLink()">Add</button>
-        </div>`:''}
-      </div>
+    <div class="proj-tab-body">
+      ${activePanel}
     </div>
   `
 }
