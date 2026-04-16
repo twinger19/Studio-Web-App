@@ -1015,8 +1015,13 @@ function updateCmdHint(v){
   const hint=document.getElementById('cmdbarHint')
   if(!hint)return
   const parsed=parseCmdInput(v)
-  if(!v.trim()){hint.innerHTML='<span class="cmdhint-dim">Try: <em>tomorrow urgent review sketches for dockers</em></span>';return}
+  if(!v.trim()){hint.innerHTML='<span class="cmdhint-dim">Try: <em>tomorrow urgent review sketches for dockers</em> · or start with <em>note …</em></span>';return}
   if(parsed.type==='filter'){hint.textContent=`Filter: "${parsed.q}" — press Enter to apply`;return}
+  if(parsed.type==='note'){
+    const proj=parsed.project||'— pick project —'
+    hint.innerHTML=`<span class="cmdhint-tag">📝 Note</span> <span class="cmdhint-tag">📋 ${esc(proj)}</span>`
+    return
+  }
   if(parsed.type==='task'){
     const proj=parsed.project||'— pick project —'
     const due=parsed.due?friendly(parsed.due):'no due'
@@ -1035,6 +1040,31 @@ function parseCmdInput(raw){
   }
   if(v.startsWith('@')){
     return {type:'filter',q:v}
+  }
+  // Note capture: "note …" or "n: …" files a quick note to matched/current project
+  const noteMatch=v.match(/^(?:note\s+|n:\s*)(.+)$/i)
+  if(noteMatch){
+    let body=noteMatch[1]
+    // Find project by longest name/brand match, else current project, else current scope
+    let projectName='',projectId=''
+    const projs=allActiveProjects()
+    let bestProj=null,bestLen=0
+    for(const {p,b,m} of projs){
+      for(const tok of [p.name,b.name]){
+        if(!tok)continue
+        const rx=new RegExp('\\b'+tok.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i')
+        if(rx.test(body) && tok.length>bestLen){bestProj={p,b,m,match:tok};bestLen=tok.length}
+      }
+    }
+    if(bestProj){
+      projectName=bestProj.p.name;projectId=bestProj.p.id
+      body=body.replace(new RegExp('\\b'+bestProj.match.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i'),' ').replace(/\s+/g,' ').trim()
+    } else if(selId){
+      const f=findProject(selId);if(f){projectName=f.p.name;projectId=f.p.id}
+    } else if(viewScope.type==='project'){
+      const f=findProject(viewScope.id);if(f){projectName=f.p.name;projectId=f.p.id}
+    }
+    return {type:'note',body,project:projectName,projectId}
   }
   // Task creation grammar: keywords extract priority/due/assignee, project inferred from name/brand match
   const today=todayIso()
@@ -1130,6 +1160,18 @@ function cmdBarExec(raw){
     f.p.tasks.push({id:uid(),text:parsed.text,startDate:'',dueDate:parsed.due||'',done:false,progress:'not-started',priority:parsed.priority||'',assignee:parsed.assigneeId||'',note:''})
     save();closeCmdBar();render()
     showNotice(`Added to ${f.p.name}`)
+    return
+  }
+  if(parsed.type==='note'){
+    if(!parsed.body){showNotice('Enter a note body');return}
+    if(!parsed.projectId){showNotice('Could not determine project — include project/brand name in your note');return}
+    const f=findProject(parsed.projectId);if(!f){closeCmdBar();return}
+    const timestamp=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+    const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    f.p.notes=f.p.notes||[]
+    f.p.notes.unshift({id:uid(),title:`Quick Note — ${timestamp}`,body:`<p>${esc(parsed.body).replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</p>`,date,open:false})
+    save();closeCmdBar();render()
+    showNotice(`Note added to ${f.p.name}`)
     return
   }
   closeCmdBar()

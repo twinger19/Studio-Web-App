@@ -119,6 +119,12 @@
 <!-- FILE INPUT (hidden) -->
 <input type="file" id="fileInput" accept=".json" style="display:none" onchange="onFileImport(event)">
 
+<!-- QUICK CAPTURE FAB (mobile-first + desktop convenience) -->
+<button class="quick-fab" id="quickFab" onclick="openCmdBar()" aria-label="Quick add task or note" title="Quick add (⌘K)">
+  <span class="quick-fab-ico">＋</span>
+  <span class="quick-fab-lbl">Add</span>
+</button>
+
 <!-- ══════════════════════════════════════════════════
      STUDIO AI CHAT WIDGET
      ══════════════════════════════════════════════════ -->

@@ -1034,3 +1034,45 @@ kbd{display:inline-block;padding:1px 6px;background:var(--bdr-l);border:1px soli
 .wl-cap-notice{margin-top:14px;padding:12px 16px;background:var(--warn-l);border:1px solid var(--warn);color:var(--warn);border-radius:var(--r);font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .wl-cap-notice .btn{color:var(--txt)}
 .wl-group-hidden{padding:8px 12px;font-size:11px;color:var(--tm);text-align:center;opacity:.7}
+
+/* ══════════════════════════════════════════════════════
+   QUICK CAPTURE FAB (floating + button)
+   ══════════════════════════════════════════════════════ */
+.quick-fab{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:498;display:inline-flex;align-items:center;gap:6px;padding:12px 22px;border-radius:999px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--acc) 0%,#4F5FBE 100%);color:#fff;font-size:15px;font-weight:600;font-family:inherit;box-shadow:0 4px 20px rgba(99,118,218,.4);transition:transform .18s,box-shadow .18s}
+.quick-fab:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 8px 28px rgba(99,118,218,.55)}
+.quick-fab:active{transform:translateX(-50%) scale(.96)}
+.quick-fab-ico{font-size:18px;line-height:1}
+.quick-fab-lbl{letter-spacing:.01em}
+
+/* Hide on wide screens where the toolbar ⌘K button is visible; show on mobile */
+@media (min-width:769px){
+  .quick-fab{display:none}
+}
+@media (max-width:768px){
+  .quick-fab{bottom:80px;padding:10px 18px;font-size:14px}
+  /* Push chat FAB left so it doesn't collide with quick-fab */
+  .chat-fab{bottom:20px;right:20px;width:46px;height:46px;font-size:18px}
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE TOOLBAR REFINEMENTS
+   ══════════════════════════════════════════════════════ */
+@media (max-width:768px){
+  /* Compact the topbar */
+  .topbar{padding:8px 12px;gap:6px}
+  .search-wrap{flex:1;min-width:0}
+  .search-input{font-size:13px;padding:6px 8px 6px 28px}
+  .search-icon{left:8px;font-size:13px}
+  /* Hide view toggle text, keep icons */
+  .view-toggle{gap:2px}
+  .vt-btn{padding:6px 8px;font-size:12px}
+  /* Keep breadcrumb compact */
+  .breadcrumb{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40vw}
+  /* Ensure touch targets are at least 44px */
+  .sb-item{min-height:44px}
+  .wl-row{min-height:44px}
+  .proj-tab{min-height:44px}
+  .bulk-sel,.bulk-date{min-height:36px;font-size:13px}
+  /* Extra bottom padding so FABs don't cover content */
+  .content{padding-bottom:120px}
+}
