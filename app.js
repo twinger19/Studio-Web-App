@@ -2313,7 +2313,7 @@ async function runAICleanup(nid){
   if(!editor){return}
   const key=(typeof getChatKey==='function')?getChatKey():''
   if(!key){
-    showNotice('Add your Anthropic API key in the chat panel ⚙ first')
+    showNotice('Add your Google Gemini API key in the chat panel ⚙ first')
     if(typeof showChatSetup==='function'){toggleChat();setTimeout(showChatSetup,180)}
     return
   }
@@ -2341,31 +2341,30 @@ RULES:
   const userMsg=`Here is the note. Return cleaned-up HTML only.\n\n---\n${plain}\n---`
 
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const model=(typeof CHAT_MODEL!=='undefined')?CHAT_MODEL:'gemini-2.5-flash'
+    const url=`${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(key)}`
+    const resp=await fetch(url,{
       method:'POST',
-      headers:{
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true',
-        'content-type':'application/json'
-      },
+      headers:{'content-type':'application/json'},
       body:JSON.stringify({
-        model:(typeof CHAT_MODEL!=='undefined')?CHAT_MODEL:'claude-haiku-4-5-20251001',
-        max_tokens:2048,
-        system:systemPrompt,
-        messages:[{role:'user',content:userMsg}]
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents:[{role:'user',parts:[{text:userMsg}]}],
+        generationConfig:{maxOutputTokens:2048,temperature:0.3}
       })
     })
     if(!resp.ok){
       const t=await resp.text()
       let m=`AI error ${resp.status}`
       try{const j=JSON.parse(t);m=j.error?.message||m}catch{}
-      if(resp.status===401)m='Invalid API key — open the chat panel ⚙ to update it.'
+      if(resp.status===401||resp.status===403)m='Invalid Gemini API key — open the chat panel ⚙ to update it.'
+      if(resp.status===429)m='Rate limit hit — wait a moment and try again.'
       showNotice(m)
       editor.innerHTML=original
     }else{
       const data=await resp.json()
-      let html=(data?.content?.[0]?.text||'').trim()
+      // Gemini response shape: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+      let html=((data?.candidates?.[0]?.content?.parts||[])
+        .map(p=>p?.text||'').join('')).trim()
       // Strip accidental code fences
       html=html.replace(/^```(?:html)?\s*/i,'').replace(/```\s*$/,'').trim()
       const cleaned=sanitizeNoteHTML(html)
@@ -3551,13 +3550,25 @@ async function checkAuth() {
 // ══════════════════════════════════════════════════════
 const CHAT_KEY_STORE = 'studio_ai_key'
 const CHAT_HISTORY_KEY = 'studio_chat_history'
-const CHAT_MODEL = 'claude-haiku-4-5-20251001'
+// Switched from Anthropic Claude to Google Gemini.
+// Gemini API keys start with "AIza" and are obtained at https://aistudio.google.com/apikey
+const CHAT_MODEL = 'gemini-2.5-flash'
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 let chatOpen = false
 let chatBusy = false
 let chatHistory = []   // [{role:'user'|'assistant', content:'...'}]
 
 // ── Key management ─────────────────────────────────────
-function getChatKey(){ return safeStorageGet(CHAT_KEY_STORE)||'' }
+function getChatKey(){
+  const raw = safeStorageGet(CHAT_KEY_STORE)||''
+  // We migrated from Anthropic to Gemini. If an old "sk-ant-…" key is still in storage,
+  // ignore it and clear it so the setup screen prompts for a Gemini key.
+  if(raw.startsWith('sk-ant-')){
+    try{ safeStorageSet(CHAT_KEY_STORE,'') }catch{}
+    return ''
+  }
+  return raw
+}
 
 function saveChatHistory(){
   try{ safeStorageSet(CHAT_HISTORY_KEY, JSON.stringify(chatHistory.slice(-20))) }catch{}
@@ -3576,10 +3587,12 @@ function loadChatHistory(){
 function saveChatKey(){
   const k = (document.getElementById('chatKeyInp')?.value||'').trim()
   const err = document.getElementById('chatKeyErr')
-  if(!k.startsWith('sk-ant-')){
-    if(err)err.textContent='Key should start with sk-ant-…'
+  // Gemini API keys start with "AIza" and are typically 39 characters long.
+  if(!k.startsWith('AIza')){
+    if(err)err.textContent='Gemini key should start with AIza…'
     return
   }
+  // If a previous Anthropic key was saved, this overwrites it cleanly.
   safeStorageSet(CHAT_KEY_STORE, k)
   if(err)err.textContent=''
   initChatUI()
@@ -3815,36 +3828,37 @@ ${context}`
   // Keep last 20 turns for context window efficiency
   const msgs = chatHistory.slice(-20)
 
+  // Convert internal {role:'user'|'assistant'} format to Gemini's {role:'user'|'model'} format.
+  const geminiContents = msgs.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }))
+
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const url = `${GEMINI_API_BASE}/${CHAT_MODEL}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`
+    const resp = await fetch(url, {
       method: 'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json',
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: CHAT_MODEL,
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: msgs,
-        stream: true,
-      }),
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiContents,
+        generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+      })
     })
 
     if(!resp.ok){
       const errText = await resp.text()
       let msg = `API error ${resp.status}`
       try{ const j=JSON.parse(errText); msg=j.error?.message||msg }catch{}
-      if(resp.status===401) msg='Invalid API key — click ⚙ to update it.'
+      if(resp.status===401||resp.status===403) msg='Invalid Gemini API key — click ⚙ to update it.'
+      if(resp.status===429) msg='Rate limit hit — wait a moment and try again.'
       removeChatEl(typingId)
       appendErrorBubble(msg)
       setChatBusy(false)
       return
     }
 
-    // Stream the response
+    // Stream the response (Gemini SSE format)
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
     let aiText = ''
@@ -3866,15 +3880,19 @@ ${context}`
       const lines = buffer.split('\n')
       buffer = lines.pop()||''
       for(const line of lines){
-        if(!line.startsWith('data: ')) continue
-        const data = line.slice(6).trim()
-        if(data==='[DONE]') continue
+        if(!line.startsWith('data:')) continue
+        const data = line.slice(5).trim()
+        if(!data||data==='[DONE]') continue
         try{
           const evt = JSON.parse(data)
-          if(evt.type==='content_block_delta'&&evt.delta?.type==='text_delta'){
-            aiText += evt.delta.text
-            if(bubbleEl) bubbleEl.innerHTML = formatChatMarkdown(aiText)
-            scrollChat()
+          // Gemini chunk shape: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+          const parts = evt?.candidates?.[0]?.content?.parts || []
+          for(const p of parts){
+            if(typeof p.text === 'string'){
+              aiText += p.text
+              if(bubbleEl) bubbleEl.innerHTML = formatChatMarkdown(aiText)
+              scrollChat()
+            }
           }
         }catch{}
       }

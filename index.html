@@ -149,14 +149,14 @@
   <!-- Setup screen (hidden when key is saved) -->
   <div class="chat-setup" id="chatSetup" style="display:none">
     <div class="chat-setup-ico">🔑</div>
-    <div class="chat-setup-title">Connect your Anthropic API key</div>
+    <div class="chat-setup-title">Connect your Google Gemini API key</div>
     <div class="chat-setup-sub">Your key is stored locally in this browser only — it never leaves your device.</div>
     <input class="chat-key-inp" id="chatKeyInp" type="password"
-      placeholder="sk-ant-api03-…"
+      placeholder="AIzaSy…"
       onkeydown="if(event.key==='Enter')saveChatKey()">
     <div class="chat-key-err" id="chatKeyErr"></div>
     <button class="btn btn-primary" onclick="saveChatKey()">Save &amp; Connect</button>
-    <a class="chat-setup-link" href="https://console.anthropic.com/keys" target="_blank" rel="noopener">Get an API key at console.anthropic.com ↗</a>
+    <a class="chat-setup-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free API key at aistudio.google.com ↗</a>
   </div>
 
   <!-- Messages -->
@@ -172,7 +172,7 @@
         onkeydown="onChatKey(event)"></textarea>
       <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()" title="Send">↑</button>
     </div>
-    <div class="chat-footer-note">Powered by Claude · Context: all your live Studio W data</div>
+    <div class="chat-footer-note">Powered by Gemini · Context: all your live Studio W data</div>
   </div>
 </div>
 
