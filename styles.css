@@ -67,8 +67,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync-dot.syncing{background:var(--warn);box-shadow:0 0 5px var(--warn)}
 .sync-dot.error{background:var(--red)}
 /* ── DRAG & DROP ─────────────────────────────────────── */
-.member-row[draggable],.brand-row[draggable],.proj-row[draggable]{cursor:grab}
-.member-row[draggable]:active,.brand-row[draggable]:active,.proj-row[draggable]:active{cursor:grabbing}
+/* Whole rows are draggable, but the cursor only signals "grab" on the drag handle.
+   Prevents text fields inside the row from showing a grab cursor. */
+.member-row[draggable],.brand-row[draggable],.proj-row[draggable]{cursor:default}
+.member-row[draggable] .drag-handle,.brand-row[draggable] .drag-handle,.proj-row[draggable] .drag-handle{cursor:grab}
+.member-row[draggable] .drag-handle:active,.brand-row[draggable] .drag-handle:active,.proj-row[draggable] .drag-handle:active{cursor:grabbing}
 .sb-drag-over{background:rgba(99,118,218,.22)!important;outline:2px dashed var(--acc);outline-offset:-2px;border-radius:4px}
 .sb-dragging{opacity:.35}
 /* ── GLOBAL CALENDAR ─────────────────────────────────── */
@@ -186,8 +189,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── TASKS ───────────────────────────────────────────── */
 .task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr-l)}
 .task-item:last-of-type{border-bottom:none}
-.task-item[draggable]{cursor:grab}
-.task-item[draggable]:active{cursor:grabbing}
+.task-item[draggable]{cursor:default}
+.task-item[draggable] .drag-handle{cursor:grab}
+.task-item[draggable] .drag-handle:active{cursor:grabbing}
 .drag-handle{font-size:14px;color:var(--bdr);cursor:grab;padding:1px 2px;opacity:0;transition:opacity .12s;flex-shrink:0;user-select:none;line-height:1;margin-top:2px}
 .task-item:hover .drag-handle,.note-card:hover .drag-handle{opacity:1}
 .drag-handle:hover{color:var(--tm)}
@@ -230,8 +234,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .note-card{border:1px solid var(--bdr);border-radius:14px;margin-bottom:12px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);box-shadow:0 10px 24px rgba(26,28,46,.05)}
 .note-head{border-radius:14px 14px 0 0}
 .note-card:not(:has(.note-body-wrap.open)) .note-head{border-radius:14px}
-.note-card[draggable]{cursor:grab}
-.note-card[draggable]:active{cursor:grabbing}
+/* The whole note card is draggable, but only the drag handle should LOOK grab-able.
+   Text areas, headers, and the editor body keep their natural cursor (text / pointer). */
+.note-card[draggable]{cursor:default}
+.note-card[draggable] .drag-handle{cursor:grab}
+.note-card[draggable] .drag-handle:active{cursor:grabbing}
+/* Force a normal text caret inside the rich-text editor and any input fields. */
+.note-card .rte-content,.note-card .note-title-inp{cursor:text}
+input[type="text"],input:not([type]),textarea,[contenteditable="true"]{cursor:text}
 .note-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,#f7f8fc 0%,#f1f4fa 100%);cursor:pointer;user-select:none}
 .note-head:hover{background:linear-gradient(180deg,#f2f5fb 0%,#ebeff8 100%)}
 .note-chev{font-size:8px;color:var(--tm);transition:transform .18s;flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(99,118,218,.1)}

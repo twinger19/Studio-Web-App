@@ -2588,8 +2588,8 @@ function rteKeydown(e,nid){
           else indentListItem(li)
           placeCursorAtStartOf(li)
         })
-        // Trigger save
-        saveNoteBody(nid,editor)
+        // Persist data without re-rendering the editor — re-rendering would destroy the live cursor.
+        saveNoteBodyDataOnly(nid,editor)
         refreshToolbar(nid)
         return
       }
@@ -2611,6 +2611,17 @@ function saveNoteBody(nid,el){
   if(n){
     n.body=sanitizeNoteHTML(el.innerHTML)
     el.innerHTML=n.body
+    save()
+  }
+}
+
+// Save data only — don't re-render the editor's HTML.
+// Use this for in-progress edits (Tab, formatting, etc.) so the live cursor isn't destroyed.
+function saveNoteBodyDataOnly(nid,el){
+  const f=sel();if(!f)return
+  const n=f.p.notes.find(n=>n.id===nid)
+  if(n){
+    n.body=sanitizeNoteHTML(el.innerHTML)
     save()
   }
 }
