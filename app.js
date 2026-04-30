@@ -2798,11 +2798,26 @@ function showView(v){
   viewMode=v;closeMobileSidebar();render()
 }
 
+// Track where the user last pressed the mouse, so we can restrict card drags to the drag handle.
+let _lastMouseDownEl=null
+document.addEventListener('mousedown',e=>{_lastMouseDownEl=e.target},true)
+
 function projDragStart(e,type,id){
   const tag=e.target.tagName
   if(['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(tag)||e.target.isContentEditable){
     e.preventDefault()
     return
+  }
+  // If the card has a drag handle, require the drag to start FROM that handle.
+  // Sidebar rows have no drag handle, so they continue to drag from anywhere.
+  const card=e.currentTarget
+  const hasHandle=card.querySelector('.drag-handle')
+  if(hasHandle){
+    const startedOnHandle=_lastMouseDownEl&&_lastMouseDownEl.closest&&_lastMouseDownEl.closest('.drag-handle')
+    if(!startedOnHandle){
+      e.preventDefault()
+      return
+    }
   }
   _drag={scope:'project',type,id}
   e.dataTransfer.effectAllowed='move'

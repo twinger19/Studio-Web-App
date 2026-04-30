@@ -192,8 +192,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .task-item[draggable]{cursor:default}
 .task-item[draggable] .drag-handle{cursor:grab}
 .task-item[draggable] .drag-handle:active{cursor:grabbing}
-.drag-handle{font-size:14px;color:var(--bdr);cursor:grab;padding:1px 2px;opacity:0;transition:opacity .12s;flex-shrink:0;user-select:none;line-height:1;margin-top:2px}
+.drag-handle{font-size:14px;color:var(--bdr);cursor:grab;padding:1px 2px;opacity:.35;transition:opacity .12s;flex-shrink:0;user-select:none;line-height:1;margin-top:2px}
 .task-item:hover .drag-handle,.note-card:hover .drag-handle{opacity:1}
+.drag-handle:hover{opacity:1!important}
 .drag-handle:hover{color:var(--tm)}
 .task-chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--bdr);cursor:pointer;flex-shrink:0;margin-top:2px;appearance:none;-webkit-appearance:none;background:#fff;transition:all .14s;position:relative}
 .task-chk:checked{background:var(--ok);border-color:var(--ok)}
