@@ -1499,6 +1499,8 @@ function noteHTML(n){
         <button class="rte-btn" data-cmd="link" title="Add link" onmousedown="rteCmd(event,'link','${n.id}')">🔗</button>
         <div class="rte-sep"></div>
         <button class="rte-btn" data-cmd="clear" title="Clear formatting" onmousedown="rteCmd(event,'clear','${n.id}')" style="font-size:11px">Tx</button>
+        <div class="rte-sep"></div>
+        <button class="rte-btn rte-btn-ai" data-cmd="ai-cleanup" title="Clean up &amp; format with AI" onmousedown="rteCmd(event,'ai-cleanup','${n.id}')">✨ AI</button>
       </div>
       <div class="rte-content" contenteditable="true" data-nid="${n.id}"
         data-placeholder="Write your notes here…"
@@ -1517,7 +1519,23 @@ function noteHTML(n){
 function restoreEditors(p){
   p.notes.forEach(n=>{
     const el=document.querySelector(`.rte-content[data-nid="${n.id}"]`)
-    if(el)el.innerHTML=sanitizeNoteHTML(n.body||'')
+    if(el){
+      el.innerHTML=sanitizeNoteHTML(n.body||'')
+      // Reset undo history for this note (fresh page load = fresh history)
+      if(noteHistory[n.id])delete noteHistory[n.id]
+    }
+  })
+  // Add a sticky-shadow effect to each note toolbar when it pins
+  document.querySelectorAll('.note-body-wrap.open .rte-toolbar').forEach(tb=>{
+    if(tb._stickyObs)return
+    const sentinel=document.createElement('div')
+    sentinel.style.cssText='height:0;margin-top:-1px'
+    tb.parentNode.insertBefore(sentinel,tb)
+    const obs=new IntersectionObserver(([entry])=>{
+      tb.classList.toggle('is-pinned',entry.intersectionRatio===0)
+    },{threshold:[0,1]})
+    obs.observe(sentinel)
+    tb._stickyObs=obs
   })
 }
 
@@ -1958,6 +1976,7 @@ function setActiveEditor(nid){
   activeEditorId=nid
   rememberSelection(nid)
   refreshToolbar(nid)
+  seedNoteHistory(nid)
 }
 
 function getEditor(nid){
@@ -2066,14 +2085,56 @@ function placeCursorInside(node,atEnd=true){
   sel.addRange(range)
 }
 
+// Map of inline tags that have aliases (e.g. <b> and <strong> are equivalent)
+const INLINE_TAG_ALIASES={
+  'STRONG':['B','STRONG'], 'B':['B','STRONG'],
+  'EM':['I','EM'], 'I':['I','EM'],
+  'U':['U'], 'MARK':['MARK'], 'A':['A']
+}
+
+// Unwrap a node by replacing it with its children
+function unwrapNode(node){
+  const parent=node.parentNode
+  if(!parent)return
+  while(node.firstChild)parent.insertBefore(node.firstChild,node)
+  parent.removeChild(node)
+}
+
 function wrapSelection(tag,nid,attrs={}){
-  return withEditorSelection(nid,(range,sel)=>{
+  return withEditorSelection(nid,(range,sel,editor)=>{
+    const tagU=tag.toUpperCase()
+    const aliases=INLINE_TAG_ALIASES[tagU]||[tagU]
+    // Check if cursor / selection start is already inside this format → toggle OFF
+    const existing=closestEditorNode(range.startContainer,aliases,editor)
+    if(existing){
+      // Unwrap the existing tag (turns formatting off)
+      const innerRange=document.createRange()
+      innerRange.selectNodeContents(existing)
+      const parent=existing.parentNode
+      const refNext=existing.nextSibling
+      unwrapNode(existing)
+      // Restore a sensible cursor
+      try{
+        const newRange=document.createRange()
+        if(refNext){newRange.setStartBefore(refNext);newRange.collapse(true)}
+        else{newRange.selectNodeContents(parent);newRange.collapse(false)}
+        sel.removeAllRanges()
+        sel.addRange(newRange)
+      }catch{}
+      return
+    }
     if(range.collapsed){
       const el=document.createElement(tag)
       Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v))
-      el.textContent=tag==='mark'?'highlight':'text'
+      // Insert a zero-width space so the cursor stays inside the new tag
+      // and so subsequent typing happens INSIDE the formatting.
+      el.appendChild(document.createTextNode('​'))
       range.insertNode(el)
-      placeCursorInside(el)
+      const newRange=document.createRange()
+      newRange.selectNodeContents(el)
+      newRange.collapse(false)
+      sel.removeAllRanges()
+      sel.addRange(newRange)
       return
     }
     const wrapper=document.createElement(tag)
@@ -2123,24 +2184,59 @@ function toggleList(type,nid){
   const editor=getEditor(nid)
   if(!editor)return
   withEditorSelection(nid,(range,sel)=>{
-    const text=(range.toString().trim()||closestBlockNode(range.startContainer,editor).textContent||'List item').trim()
-    const lines=text.split(/\n+/).map(s=>s.trim()).filter(Boolean)
+    // If cursor is already inside a list of the same type, toggle OFF (convert back to plain paragraphs)
+    const existingList=closestEditorNode(range.startContainer,[type.toUpperCase()],editor)
+    if(existingList){
+      const frag=document.createDocumentFragment()
+      ;[...existingList.querySelectorAll(':scope > li')].forEach(li=>{
+        const p=document.createElement('p')
+        while(li.firstChild)p.appendChild(li.firstChild)
+        if(!p.textContent.trim()&&!p.querySelector('br'))p.appendChild(document.createElement('br'))
+        frag.appendChild(p)
+      })
+      existingList.replaceWith(frag)
+      return
+    }
+    // Build list from selection text (multi-line) OR start with a single empty bullet
+    const selectedText=range.toString().trim()
     const list=document.createElement(type)
-    ;(lines.length?lines:['List item']).forEach(line=>{
+    if(selectedText){
+      const lines=selectedText.split(/\n+/).map(s=>s.trim()).filter(Boolean)
+      lines.forEach(line=>{
+        const li=document.createElement('li')
+        li.textContent=line
+        list.appendChild(li)
+      })
+    }else{
+      // Empty bullet — user can start typing right away
       const li=document.createElement('li')
-      li.textContent=line
+      li.appendChild(document.createElement('br'))
       list.appendChild(li)
-    })
+    }
     if(range.collapsed){
       const block=closestBlockNode(range.startContainer,editor)
-      if(block!==editor)block.replaceWith(list)
-      else range.insertNode(list)
+      // If block is empty / placeholder, replace it; otherwise insert after
+      if(block!==editor){
+        const blockText=(block.textContent||'').trim()
+        if(blockText)block.after(list)
+        else block.replaceWith(list)
+      }else{
+        range.insertNode(list)
+      }
     }else{
       range.deleteContents()
       range.insertNode(list)
     }
-    placeCursorInside(list.querySelector('li'),true)
-    noteSelections[nid]=window.getSelection().getRangeAt(0).cloneRange()
+    // Place cursor at the start of the first <li>
+    const firstLi=list.querySelector('li')
+    if(firstLi){
+      const cursorRange=document.createRange()
+      cursorRange.selectNodeContents(firstLi)
+      cursorRange.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(cursorRange)
+      noteSelections[nid]=cursorRange.cloneRange()
+    }
   })
 }
 
@@ -2190,6 +2286,9 @@ function rteCmd(event,cmd,nid){
   activeEditorId=nid
   const editor=getEditor(nid)
   if(editor)editor.focus()
+  seedNoteHistory(nid)
+  // Snapshot before mutating so the user can undo this command
+  pushNoteSnapshot(nid,{force:true})
   if(cmd==='bold')wrapSelection('strong',nid)
   else if(cmd==='italic')wrapSelection('em',nid)
   else if(cmd==='underline')wrapSelection('u',nid)
@@ -2201,7 +2300,91 @@ function rteCmd(event,cmd,nid){
   else if(cmd==='quote')toggleBlock('blockquote',nid)
   else if(cmd==='link')promptForLink(nid)
   else if(cmd==='clear')clearFormatting(nid)
+  else if(cmd==='ai-cleanup')runAICleanup(nid)
+  pushNoteSnapshot(nid,{force:true})
   refreshToolbar(nid)
+}
+
+// ══════════════════════════════════════════════════════
+//  AI CLEAN-UP — reformat note with Claude
+// ══════════════════════════════════════════════════════
+async function runAICleanup(nid){
+  const editor=getEditor(nid)
+  if(!editor){return}
+  const key=(typeof getChatKey==='function')?getChatKey():''
+  if(!key){
+    showNotice('Add your Anthropic API key in the chat panel ⚙ first')
+    if(typeof showChatSetup==='function'){toggleChat();setTimeout(showChatSetup,180)}
+    return
+  }
+  const btn=document.querySelector(`.rte-toolbar[data-nid="${nid}"] [data-cmd="ai-cleanup"]`)
+  const original=editor.innerHTML
+  const plain=editor.innerText.trim()
+  if(!plain){showNotice('Note is empty — nothing to clean up');return}
+
+  if(btn){btn.classList.add('is-loading');btn.dataset.prevText=btn.innerHTML;btn.innerHTML='⏳'}
+  // Snapshot before AI rewrite so the user can undo it with Cmd+Z
+  pushNoteSnapshot(nid,{force:true})
+
+  const systemPrompt=`You are a note-formatting assistant inside a project management app.
+You will be given a single note's contents. Your job is to clean it up and return tidy HTML.
+
+RULES:
+- Output ONLY HTML — no markdown, no commentary, no \`\`\` fences, no <html>/<body> tags.
+- Keep the user's exact words and meaning. You may fix typos and obvious grammar, but never invent new content or change the substance.
+- Use ONLY these tags: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <u>, <mark>, <blockquote>, <a>, <br>.
+- Promote section titles to <h2> or <h3> when obvious. Group related lines into bullet lists when natural.
+- Tighten run-on paragraphs into shorter ones. Remove redundant whitespace.
+- Preserve any URLs as <a href="..." target="_blank" rel="noopener noreferrer">link text</a>.
+- Don't add a heading or summary that wasn't already implied by the user's note.`
+
+  const userMsg=`Here is the note. Return cleaned-up HTML only.\n\n---\n${plain}\n---`
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'content-type':'application/json'
+      },
+      body:JSON.stringify({
+        model:(typeof CHAT_MODEL!=='undefined')?CHAT_MODEL:'claude-haiku-4-5-20251001',
+        max_tokens:2048,
+        system:systemPrompt,
+        messages:[{role:'user',content:userMsg}]
+      })
+    })
+    if(!resp.ok){
+      const t=await resp.text()
+      let m=`AI error ${resp.status}`
+      try{const j=JSON.parse(t);m=j.error?.message||m}catch{}
+      if(resp.status===401)m='Invalid API key — open the chat panel ⚙ to update it.'
+      showNotice(m)
+      editor.innerHTML=original
+    }else{
+      const data=await resp.json()
+      let html=(data?.content?.[0]?.text||'').trim()
+      // Strip accidental code fences
+      html=html.replace(/^```(?:html)?\s*/i,'').replace(/```\s*$/,'').trim()
+      const cleaned=sanitizeNoteHTML(html)
+      if(cleaned){
+        editor.innerHTML=cleaned
+        saveNoteBody(nid,editor)
+        pushNoteSnapshot(nid,{force:true})
+        showNotice('✨ Cleaned up — Cmd+Z to undo')
+      }else{
+        showNotice('AI returned empty response — try again')
+      }
+    }
+  }catch(err){
+    console.error('AI cleanup failed',err)
+    showNotice('AI cleanup failed — check your connection')
+    editor.innerHTML=original
+  }finally{
+    if(btn){btn.classList.remove('is-loading');if(btn.dataset.prevText){btn.innerHTML=btn.dataset.prevText;delete btn.dataset.prevText}}
+  }
 }
 
 function refreshToolbar(nid){
@@ -2249,10 +2432,176 @@ function handleNotePaste(e,nid){
   }
 }
 
+// ── Per-note undo/redo history ─────────────────────────
+// Stores HTML snapshots; we cap each note at 50 undo + 50 redo steps.
+const noteHistory={}      // nid -> { undo:[], redo:[], lastSnapshotAt:0 }
+const HISTORY_LIMIT=50
+const HISTORY_DEBOUNCE_MS=400
+
+function ensureHistory(nid){
+  if(!noteHistory[nid])noteHistory[nid]={undo:[],redo:[],lastSnapshotAt:0}
+  return noteHistory[nid]
+}
+
+// Snapshot current editor contents into the undo stack.
+// Debounced so we don't push every keystroke.
+function pushNoteSnapshot(nid,{force=false}={}){
+  const editor=getEditor(nid)
+  if(!editor)return
+  const h=ensureHistory(nid)
+  const now=Date.now()
+  if(!force&&(now-h.lastSnapshotAt)<HISTORY_DEBOUNCE_MS)return
+  const snap=editor.innerHTML
+  const last=h.undo[h.undo.length-1]
+  if(last===snap)return
+  h.undo.push(snap)
+  if(h.undo.length>HISTORY_LIMIT)h.undo.shift()
+  h.redo.length=0  // any new edit clears redo
+  h.lastSnapshotAt=now
+}
+
+// Initialize history with current state when an editor is first focused
+function seedNoteHistory(nid){
+  const editor=getEditor(nid)
+  if(!editor)return
+  const h=ensureHistory(nid)
+  if(h.undo.length===0)h.undo.push(editor.innerHTML)
+}
+
+function noteUndo(nid){
+  const editor=getEditor(nid)
+  const h=noteHistory[nid]
+  if(!editor||!h||h.undo.length<=1)return false
+  const current=h.undo.pop()
+  h.redo.push(current)
+  if(h.redo.length>HISTORY_LIMIT)h.redo.shift()
+  const previous=h.undo[h.undo.length-1]
+  editor.innerHTML=previous
+  // Save through to model
+  saveNoteBody(nid,editor)
+  return true
+}
+
+function noteRedo(nid){
+  const editor=getEditor(nid)
+  const h=noteHistory[nid]
+  if(!editor||!h||!h.redo.length)return false
+  const next=h.redo.pop()
+  h.undo.push(next)
+  if(h.undo.length>HISTORY_LIMIT)h.undo.shift()
+  editor.innerHTML=next
+  saveNoteBody(nid,editor)
+  return true
+}
+
+// Wrap a DOM mutation so we snapshot before it and refresh state after.
+function withHistory(nid,fn){
+  pushNoteSnapshot(nid,{force:true})
+  fn()
+  pushNoteSnapshot(nid,{force:true})
+}
+
+// ── Tab handling: indent / outdent inside lists ────────
+function findClosestLi(node,editor){
+  return closestEditorNode(node,['LI'],editor)
+}
+
+function indentListItem(li){
+  // Move <li> into a new nested list inside its previous sibling <li>
+  const prev=li.previousElementSibling
+  if(!prev||prev.tagName!=='LI')return false  // can't indent the first item
+  const parentList=li.parentNode
+  const listType=parentList.tagName.toLowerCase()  // ul or ol
+  let nested=prev.querySelector(':scope > '+listType+':last-child')
+  if(!nested){
+    nested=document.createElement(listType)
+    prev.appendChild(nested)
+  }
+  nested.appendChild(li)
+  return true
+}
+
+function outdentListItem(li){
+  const parentList=li.parentNode
+  const grandparent=parentList.parentNode
+  if(!grandparent)return false
+  // Only outdent if the parent list is itself nested inside another <li>
+  if(grandparent.tagName!=='LI')return false
+  const outerLi=grandparent
+  // Move siblings AFTER li into a new sublist that follows li (preserves order)
+  const after=[]
+  let n=li.nextSibling
+  while(n){after.push(n);n=n.nextSibling}
+  if(after.length){
+    const listType=parentList.tagName.toLowerCase()
+    const tail=document.createElement(listType)
+    after.forEach(s=>tail.appendChild(s))
+    parentList.appendChild(tail)
+    // Place tail INSIDE the same outer li so nesting structure stays valid
+    // (we'll move it after li's new position below)
+    li._tail=tail
+  }
+  // Insert li after the outer <li>
+  outerLi.parentNode.insertBefore(li,outerLi.nextSibling)
+  if(li._tail){
+    // Append the trailing siblings as a nested list inside li
+    li.appendChild(li._tail)
+    delete li._tail
+  }
+  // If the original parent list is now empty, remove it
+  if(!parentList.children.length)parentList.remove()
+  return true
+}
+
+function placeCursorAtStartOf(li){
+  const range=document.createRange()
+  range.selectNodeContents(li)
+  range.collapse(true)
+  const sel=window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(range)
+}
+
 function rteKeydown(e,nid){
-  if(e.key==='b'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('strong',nid)}
-  else if(e.key==='i'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('em',nid)}
-  else if(e.key==='u'&&(e.ctrlKey||e.metaKey)){e.preventDefault();wrapSelection('u',nid)}
+  const isMod=e.ctrlKey||e.metaKey
+  // ── Undo / Redo ──
+  if(isMod&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){
+    e.preventDefault()
+    if(noteUndo(nid)){refreshToolbar(nid)}
+    return
+  }
+  if(isMod&&((e.shiftKey&&(e.key==='z'||e.key==='Z'))||e.key==='y'||e.key==='Y')){
+    e.preventDefault()
+    if(noteRedo(nid)){refreshToolbar(nid)}
+    return
+  }
+  // ── Tab inside lists → indent / outdent ──
+  if(e.key==='Tab'){
+    const editor=getEditor(nid)
+    const sel=window.getSelection()
+    if(editor&&sel&&sel.rangeCount){
+      const li=findClosestLi(sel.getRangeAt(0).startContainer,editor)
+      if(li){
+        e.preventDefault()
+        withHistory(nid,()=>{
+          if(e.shiftKey)outdentListItem(li)
+          else indentListItem(li)
+          placeCursorAtStartOf(li)
+        })
+        // Trigger save
+        saveNoteBody(nid,editor)
+        refreshToolbar(nid)
+        return
+      }
+    }
+  }
+  // ── Formatting shortcuts ──
+  if((e.key==='b'||e.key==='B')&&isMod){e.preventDefault();wrapSelection('strong',nid)}
+  else if((e.key==='i'||e.key==='I')&&isMod){e.preventDefault();wrapSelection('em',nid)}
+  else if((e.key==='u'||e.key==='U')&&isMod){e.preventDefault();wrapSelection('u',nid)}
+  // ── Snapshot for undo on regular typing (debounced) ──
+  if(!isMod&&e.key.length===1)pushNoteSnapshot(nid)
+  if(e.key==='Enter'||e.key==='Backspace'||e.key==='Delete')pushNoteSnapshot(nid)
   setTimeout(()=>{rememberSelection(nid);refreshToolbar(nid)},0)
 }
 
