@@ -1639,6 +1639,112 @@ function renderCalendar(p,m){
   return calModeToggle+renderMonthView(p,m)
 }
 
+// Mobile detection — used to swap the month grid for an agenda list on phones.
+function isMobileViewport(){
+  return typeof window!=='undefined' && window.matchMedia && window.matchMedia('(max-width: 760px)').matches
+}
+
+// Render a single agenda row for any kind of calendar event.
+function renderAgendaItem(item,opts={}){
+  const projectId=item.p?.id||''
+  const projName=item.p?.name||''
+  const memberName=item.m?.name||''
+  if(item.kind==='project-range'){
+    const seg=item.segment
+    const segLabel=seg==='start'?'Project starts':seg==='end'?'Project ends':seg==='single'?'Project day':''
+    return `<div class="cal-agenda-item agenda-proj-range" onclick="goProject('${esc(projectId)}')">
+      <span class="agenda-bullet" style="background:#3DAD76">◆</span>
+      <div class="agenda-text">
+        <div class="agenda-title">${esc(projName)}</div>
+        <div class="agenda-sub">${segLabel?segLabel+' · ':''}${esc(memberName)}</div>
+      </div>
+    </div>`
+  }
+  if(item.isTravel){
+    const ico=item.tr.type==='Flight'?'✈️':item.tr.type==='Hotel'?'🏨':'🏭'
+    return `<div class="cal-agenda-item agenda-travel" onclick="goProject('${esc(projectId)}')">
+      <span class="agenda-bullet emoji">${ico}</span>
+      <div class="agenda-text">
+        <div class="agenda-title">${esc(item.tr.title||item.tr.type)}</div>
+        <div class="agenda-sub">${esc(item.tr.type)} · ${esc(projName)}</div>
+      </div>
+    </div>`
+  }
+  if(item.isMeeting){
+    return `<div class="cal-agenda-item agenda-meeting" onclick="goProject('${esc(projectId)}')">
+      <span class="agenda-bullet emoji">🤝</span>
+      <div class="agenda-text">
+        <div class="agenda-title">${esc(item.mt.title)}</div>
+        <div class="agenda-sub">Meeting · ${esc(projName)}</div>
+      </div>
+    </div>`
+  }
+  // Task (regular due date or span day)
+  const t=item.t
+  const isSpan=item.isSpan
+  const taskColor=item.color||'#888'
+  return `<div class="cal-agenda-item agenda-task ${isSpan?'is-span':''}" onclick="goProject('${esc(projectId)}')">
+    <span class="agenda-bullet" style="background:${taskColor}"></span>
+    <div class="agenda-text">
+      <div class="agenda-title">${isSpan?'In progress: ':''}${esc(t.text||'')}</div>
+      <div class="agenda-sub">${opts.hideMember?esc(projName):esc(projName)+(memberName?' · '+esc(memberName):'')}</div>
+    </div>
+  </div>`
+}
+
+// Render the current calendar month as a vertical agenda (mobile-friendly).
+// Skips empty days. Today gets a highlighted header; days are clickable to add a task.
+function renderAgendaForMonth(maps,today,opts={}){
+  const {taskMap={},meetingMap={},projMap={},travelMap={}}=maps
+  const year=calDate.getFullYear()
+  const mon=calDate.getMonth()
+  const daysInMonth=new Date(year,mon+1,0).getDate()
+  const monthLabel=`${MONTHS[mon]} ${year}`
+
+  let body=''
+  let count=0
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const ranges=projMap[iso]||[]
+    const meets=meetingMap[iso]||[]
+    const tasks=calTravelFilter?[]:(taskMap[iso]||[])
+    const travels=travelMap[iso]||[]
+    const all=[
+      ...ranges,
+      ...travels.map(x=>({isTravel:true,...x})),
+      ...meets.map(x=>({isMeeting:true,...x})),
+      ...(calTravelFilter?[]:tasks.map(x=>({...x})))
+    ]
+    if(!all.length)continue
+    count++
+    const dateObj=new Date(year,mon,d)
+    const dayName=DAYS[dateObj.getDay()]
+    const isToday=iso===today
+    const isPast=iso<today
+    body+=`<div class="cal-agenda-day ${isToday?'today':''} ${isPast?'past':''}">
+      <div class="cal-agenda-day-head" ${opts.dayClickable?`onclick="calDayClick('${iso}')"`:''}>
+        <div class="cal-agenda-day-num">${d}</div>
+        <div class="cal-agenda-day-name">${dayName.toUpperCase()}</div>
+        ${isToday?'<div class="cal-agenda-today-badge">Today</div>':''}
+        <div class="cal-agenda-day-count">${all.length} event${all.length===1?'':'s'}</div>
+      </div>
+      <div class="cal-agenda-events">
+        ${all.map(item=>renderAgendaItem(item,opts)).join('')}
+      </div>
+    </div>`
+  }
+
+  if(!count){
+    body=`<div class="cal-agenda-empty">
+      <div class="cal-agenda-empty-ico">🗓️</div>
+      <div class="cal-agenda-empty-ttl">Nothing scheduled in ${monthLabel}</div>
+      <div class="cal-agenda-empty-sub">Tap "Next" to look ahead, or "Today" to jump to this month.</div>
+    </div>`
+  }
+
+  return `<div class="cal-agenda-list">${body}</div>`
+}
+
 function renderMonthView(p,m){
   const year=calDate.getFullYear(), mon=calDate.getMonth()
   const firstDay=new Date(year,mon,1).getDay()
@@ -1685,6 +1791,12 @@ function renderMonthView(p,m){
   const projRangeMap={}
   if(calFilter!=='meetings'){
     addProjectRange(projRangeMap,p,m)
+  }
+
+  // Mobile: render a vertical agenda list instead of the cramped 7-column grid.
+  if(isMobileViewport()){
+    return renderCalendarNav(`${MONTHS[mon]} ${year}`)
+      + renderAgendaForMonth({taskMap,meetingMap,projMap:projRangeMap,travelMap:{}},today,{dayClickable:true,hideMember:true})
   }
 
   let h=renderCalendarNav(`${MONTHS[mon]} ${year}`)+`<div class="cal-month">`
@@ -1887,6 +1999,12 @@ function renderAllCalendar(){
   }
 
   // Month view
+  // Mobile: vertical agenda list — readable on a small screen, scrollable, taps go to the project.
+  if(isMobileViewport()){
+    return filterRow + renderCalendarNav(`${MONTHS[mon]} ${year}`)
+      + renderAgendaForMonth({taskMap,meetingMap,projMap,travelMap},today)
+  }
+
   let h=filterRow+renderCalendarNav(`${MONTHS[mon]} ${year}`)+`<div class="cal-month">`
 
   DAYS.forEach(d=>{h+=`<div class="cal-dow">${d}</div>`})
