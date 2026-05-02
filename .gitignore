@@ -1,2 +1,3 @@
-# Studio W runtime credentials — never commit these
-config.js
+# Studio W runtime credentials
+# (config.js is intentionally committed — it holds the Supabase *publishable* anon key,
+#  which is designed to be public; security is enforced via Supabase RLS + PWD_HASH gate.)
