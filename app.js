@@ -3354,8 +3354,14 @@ function closeModal(){
 
 function modalSubmit(){
   const name=(document.getElementById('mf1')?.value||'').trim()
-  if(!name&&modalType!=='quickTask')return
-  if(modalType==='quickTask'&&!name)return
+  // Confirm and editMember/editBrand modals don't always have a name input,
+  // so skip the empty-name guard for those. (Without this, clicking "Archive"
+  // in the confirm popup did nothing because name was always empty.)
+  const requiresName = !['confirm','editMember','editBrand'].includes(modalType)
+  if(requiresName){
+    if(!name&&modalType!=='quickTask')return
+    if(modalType==='quickTask'&&!name)return
+  }
 
   if(modalType==='member'){
     const color=COLORS[state.members.length%COLORS.length]
