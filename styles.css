@@ -109,7 +109,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tb-board::-webkit-scrollbar{height:8px}
 .tb-board::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px}
 .tb-col{flex:0 0 300px;width:300px;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bdr);border-radius:14px;max-height:calc(100vh - 130px);scroll-snap-align:start;box-shadow:0 6px 18px rgba(26,28,46,.04)}
-.tb-col-head{display:flex;align-items:center;gap:8px;padding:14px 14px 12px;border-bottom:1px solid var(--bdr-l);position:sticky;top:0;background:var(--surf);border-radius:14px 14px 0 0;z-index:1}
+.tb-col-head{display:flex;align-items:center;gap:8px;padding:14px 14px 12px;border-bottom:1px solid var(--bdr-l);position:sticky;top:0;background:var(--surf);border-radius:14px 14px 0 0;z-index:1;cursor:grab;user-select:none}
+.tb-col-head:active{cursor:grabbing}
+.tb-col-grip{font-size:12px;color:var(--bdr);opacity:.55;flex-shrink:0;line-height:1;transition:opacity .12s}
+.tb-col-head:hover .tb-col-grip{opacity:1;color:var(--tm)}
 .tb-col-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .tb-col-name{font-size:14px;font-weight:600;color:var(--txt);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tb-col-count{font-size:11px;font-weight:600;color:var(--tm);background:var(--bdr-l);padding:2px 8px;border-radius:999px;flex-shrink:0}
@@ -117,6 +120,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tb-col-body::-webkit-scrollbar{width:6px}
 .tb-col-body::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
 .tb-empty-col{padding:24px 8px;text-align:center;color:var(--tm);font-size:12px;font-style:italic}
+.tb-add-btn{display:flex;align-items:center;gap:8px;width:100%;padding:12px 14px;background:var(--surf);border:1px solid var(--bdr);border-radius:10px;color:var(--acc);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .14s;margin-bottom:4px}
+.tb-add-btn:hover{background:var(--acc-l);border-color:var(--acc);transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,118,218,.15)}
+.tb-add-ico{font-size:18px;line-height:1;font-weight:400;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .tb-add-btn{background:#1A1D2E;border-color:rgba(255,255,255,.08);color:var(--acc)}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .tb-add-btn:hover{background:rgba(99,118,218,.12);border-color:var(--acc)}
 .tb-brand-section{display:flex;flex-direction:column;gap:7px}
 .tb-brand-head{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--tm);padding:2px 4px 0;display:flex;align-items:center;gap:6px}
 .tb-brand-count{background:var(--bdr-l);color:var(--tm);font-size:9px;font-weight:600;padding:1px 6px;border-radius:999px;letter-spacing:0}
@@ -135,6 +143,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tb-card-bar-fill{height:100%;background:linear-gradient(90deg,var(--acc),#7C8FE8);transition:width .25s}
 .tb-card.tb-arch{opacity:.6}
 .tb-card.tb-card-has-overdue{border-left:3px solid var(--red)}
+/* Drag & drop visual feedback */
+.tb-col.tb-col-dragging{opacity:.45}
+.tb-col.tb-col-drop-before{box-shadow:-3px 0 0 0 var(--acc) inset, 3px 0 14px -2px rgba(99,118,218,.4)}
+.tb-col.tb-col-drop-after{box-shadow:3px 0 0 0 var(--acc) inset, -3px 0 14px -2px rgba(99,118,218,.4)}
+.tb-card{position:relative}
+.tb-card.tb-card-dragging{opacity:.4;transform:rotate(-1deg)}
+.tb-card.tb-card-drop-before::before,.tb-card.tb-card-drop-after::after{content:"";position:absolute;left:-2px;right:-2px;height:3px;background:var(--acc);border-radius:2px;pointer-events:none;box-shadow:0 0 0 4px rgba(99,118,218,.18)}
+.tb-card.tb-card-drop-before::before{top:-7px}
+.tb-card.tb-card-drop-after::after{bottom:-7px}
+.tb-brand-section.tb-brand-drop{outline:2px dashed var(--acc);outline-offset:3px;border-radius:8px;background:rgba(99,118,218,.05)}
+.tb-card[draggable]{cursor:grab}
+.tb-card[draggable]:active{cursor:grabbing}
 @media (max-width:760px){
   .tb-col{flex:0 0 84vw;width:84vw}
 }

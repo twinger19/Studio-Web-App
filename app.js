@@ -2833,22 +2833,35 @@ function renderTeamBoardColumn(m,today,showArchived){
   const totalOpenTasks=visibleBrands.reduce((a,x)=>a+x.projects.reduce((b,p)=>
     b+(p.tasks||[]).filter(t=>(t.progress||'')!=='completed').length,0),0)
 
-  return `<div class="tb-col">
-    <div class="tb-col-head">
+  return `<div class="tb-col" data-mid="${esc(m.id)}"
+    ondragover="tbColDragOver(event,'${esc(m.id)}')"
+    ondragleave="tbColDragLeave(event,'${esc(m.id)}')"
+    ondrop="tbColDrop(event,'${esc(m.id)}')">
+    <div class="tb-col-head" draggable="true"
+      ondragstart="tbColHeadDragStart(event,'${esc(m.id)}')"
+      ondragend="tbColHeadDragEnd(event)"
+      title="Drag to reorder team members">
+      <span class="tb-col-grip">⠿</span>
       <span class="tb-col-dot" style="background:${m.color||'#888'}"></span>
       <span class="tb-col-name">${esc(m.name)}</span>
       <span class="tb-col-count" title="${totalProjects} project${totalProjects===1?'':'s'} · ${totalOpenTasks} open task${totalOpenTasks===1?'':'s'}">${totalProjects}</span>
     </div>
     <div class="tb-col-body">
+      <button class="tb-add-btn" onclick="event.stopPropagation();tbAddProject('${esc(m.id)}')" title="Add a project to ${esc(m.name)}'s board">
+        <span class="tb-add-ico">＋</span><span>Add project</span>
+      </button>
       ${visibleBrands.length
         ? visibleBrands.map(({b,projects})=>renderTeamBoardBrandSection(m,b,projects,today)).join('')
-        : '<div class="tb-empty-col">No active projects</div>'}
+        : '<div class="tb-empty-col">No active projects yet</div>'}
     </div>
   </div>`
 }
 
 function renderTeamBoardBrandSection(m,b,projects,today){
-  return `<div class="tb-brand-section">
+  return `<div class="tb-brand-section" data-mid="${esc(m.id)}" data-bid="${esc(b.id)}"
+    ondragover="tbBrandDragOver(event,'${esc(m.id)}','${esc(b.id)}')"
+    ondragleave="tbBrandDragLeave(event)"
+    ondrop="tbBrandDrop(event,'${esc(m.id)}','${esc(b.id)}')">
     <div class="tb-brand-head">${esc(b.name)}<span class="tb-brand-count">${projects.length}</span></div>
     ${projects.map(p=>renderTeamBoardCard(p,m,b,today)).join('')}
   </div>`
@@ -2869,8 +2882,15 @@ function renderTeamBoardCard(p,m,b,today){
   const isArch=p.status==='archived'
 
   return `<div class="tb-card${isArch?' tb-arch':''}${isOverdue?' tb-card-has-overdue':''}"
-    onclick="goProject('${esc(p.id)}')"
-    title="Open ${esc(p.name)}">
+    data-mid="${esc(m.id)}" data-bid="${esc(b.id)}" data-pid="${esc(p.id)}"
+    draggable="true"
+    onclick="tbCardClick(event,'${esc(p.id)}')"
+    ondragstart="tbCardDragStart(event,'${esc(m.id)}','${esc(b.id)}','${esc(p.id)}')"
+    ondragend="tbCardDragEnd(event)"
+    ondragover="tbCardDragOver(event,'${esc(m.id)}','${esc(b.id)}','${esc(p.id)}')"
+    ondragleave="tbCardDragLeave(event)"
+    ondrop="tbCardDrop(event,'${esc(m.id)}','${esc(b.id)}','${esc(p.id)}')"
+    title="Open ${esc(p.name)} · drag to reorder">
     <div class="tb-card-name">${esc(p.name)}</div>
     <div class="tb-card-meta">
       ${total?`<span class="tb-card-tasks" title="${done} of ${total} tasks complete">✓ ${done}/${total}</span>`:'<span class="tb-card-tasks tb-empty">No tasks</span>'}
@@ -2880,6 +2900,230 @@ function renderTeamBoardCard(p,m,b,today){
     </div>
     ${total?`<div class="tb-card-bar"><div class="tb-card-bar-fill" style="width:${pct}%"></div></div>`:''}
   </div>`
+}
+
+// ──────────────────────────────────────────────────────
+//  TEAM BOARD — Add project from a column
+// ──────────────────────────────────────────────────────
+function tbAddProject(mid){
+  const m=state.members.find(x=>x.id===mid)
+  if(!m)return
+  // If this member has no brands yet, walk the user through making one first.
+  if(!m.brands||!m.brands.length){
+    showPromptModal(`New brand for ${m.name}`,'e.g. Cole Haan',(brandName)=>{
+      const b=mkBrand(brandName,[])
+      m.brands.push(b)
+      openMembers.add(m.id);openBrands.add(b.id)
+      save()
+      // Now open the project modal with this newly created brand pre-selected
+      openProjectFromMemberModal(mid,b.id)
+    })
+    return
+  }
+  openProjectFromMemberModal(mid)
+}
+
+function openProjectFromMemberModal(mid,preselectBid){
+  const m=state.members.find(x=>x.id===mid)
+  if(!m||!m.brands.length)return
+  modalType='projectFromMember'
+  modalCtx=mid
+  document.getElementById('modalTtl').textContent=`Add project · ${m.name}`
+  const opts=m.brands.map(b=>`<option value="${b.id}" ${b.id===preselectBid?'selected':''}>${esc(b.name)}</option>`).join('')
+  document.getElementById('modalFields').innerHTML=`
+    <div class="field"><label>Project name</label>
+      <input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
+    <div class="field"><label>Brand</label>
+      <select id="mf2">${opts}</select></div>`
+  const okBtn=document.getElementById('modalOk')
+  okBtn.textContent='Add project'
+  okBtn.className='btn btn-primary'
+  document.getElementById('modalOv').style.display='flex'
+  setTimeout(()=>{const el=document.getElementById('mf1');if(el)el.focus()},30)
+}
+
+// ──────────────────────────────────────────────────────
+//  TEAM BOARD — drag & drop
+// ──────────────────────────────────────────────────────
+// Single shared state so we know what's being dragged.
+let _tbDrag=null   // { kind:'col'|'card', mid, bid?, pid? }
+let _tbJustDragged=false  // suppress click after drop
+
+function tbCardClick(e,pid){
+  if(_tbJustDragged){_tbJustDragged=false;return}
+  goProject(pid)
+}
+
+// ── Column reorder ──
+function tbColHeadDragStart(e,mid){
+  _tbDrag={kind:'col',mid}
+  e.dataTransfer.effectAllowed='move'
+  // Set a tiny payload so Firefox treats this as a real drag
+  try{e.dataTransfer.setData('text/plain',mid)}catch{}
+  const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
+  if(col)col.classList.add('tb-col-dragging')
+  e.stopPropagation()
+}
+function tbColHeadDragEnd(e){
+  document.querySelectorAll('.tb-col-dragging,.tb-col-drop-before,.tb-col-drop-after,.tb-card-drop-before,.tb-card-drop-after,.tb-brand-drop')
+    .forEach(el=>el.classList.remove('tb-col-dragging','tb-col-drop-before','tb-col-drop-after','tb-card-drop-before','tb-card-drop-after','tb-brand-drop'))
+  _tbDrag=null
+}
+function tbColDragOver(e,mid){
+  if(_tbDrag?.kind!=='col')return
+  if(_tbDrag.mid===mid)return
+  e.preventDefault()
+  e.dataTransfer.dropEffect='move'
+  // Decide left/right drop based on cursor x within the column
+  const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
+  if(!col)return
+  const rect=col.getBoundingClientRect()
+  const dropAfter=(e.clientX-rect.left) > rect.width/2
+  document.querySelectorAll('.tb-col-drop-before,.tb-col-drop-after').forEach(el=>el.classList.remove('tb-col-drop-before','tb-col-drop-after'))
+  col.classList.add(dropAfter?'tb-col-drop-after':'tb-col-drop-before')
+}
+function tbColDragLeave(e,mid){
+  // Only clear if leaving the column entirely
+  const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
+  if(!col)return
+  if(!col.contains(e.relatedTarget))col.classList.remove('tb-col-drop-before','tb-col-drop-after')
+}
+function tbColDrop(e,mid){
+  // Card dropped on column body (not on a card or brand) → append to last brand
+  if(_tbDrag?.kind==='card'){
+    e.preventDefault()
+    handleCardDropOnColumn(mid)
+    tbColHeadDragEnd()
+    return
+  }
+  if(_tbDrag?.kind!=='col')return
+  e.preventDefault()
+  if(_tbDrag.mid===mid){tbColHeadDragEnd();return}
+  const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
+  const dropAfter=col && col.classList.contains('tb-col-drop-after')
+  reorderMembers(_tbDrag.mid,mid,dropAfter)
+  tbColHeadDragEnd()
+  save()
+  render()
+}
+function reorderMembers(srcId,tgtId,after){
+  const fromIdx=state.members.findIndex(m=>m.id===srcId)
+  if(fromIdx<0)return
+  const [moved]=state.members.splice(fromIdx,1)
+  let toIdx=state.members.findIndex(m=>m.id===tgtId)
+  if(toIdx<0){state.members.push(moved);return}
+  if(after)toIdx++
+  state.members.splice(toIdx,0,moved)
+}
+
+// ── Card drag (within / across brands & members) ──
+function tbCardDragStart(e,mid,bid,pid){
+  _tbDrag={kind:'card',mid,bid,pid}
+  e.dataTransfer.effectAllowed='move'
+  try{e.dataTransfer.setData('text/plain',pid)}catch{}
+  const card=document.querySelector(`.tb-card[data-pid="${CSS.escape(pid)}"]`)
+  if(card)card.classList.add('tb-card-dragging')
+  e.stopPropagation()
+}
+function tbCardDragEnd(e){
+  _tbJustDragged=true
+  setTimeout(()=>{_tbJustDragged=false},50)
+  document.querySelectorAll('.tb-card-dragging,.tb-card-drop-before,.tb-card-drop-after,.tb-brand-drop')
+    .forEach(el=>el.classList.remove('tb-card-dragging','tb-card-drop-before','tb-card-drop-after','tb-brand-drop'))
+  _tbDrag=null
+}
+function tbCardDragOver(e,mid,bid,pid){
+  if(_tbDrag?.kind!=='card')return
+  e.preventDefault()
+  e.stopPropagation()
+  e.dataTransfer.dropEffect='move'
+  const card=document.querySelector(`.tb-card[data-pid="${CSS.escape(pid)}"]`)
+  if(!card||card.classList.contains('tb-card-dragging'))return
+  const rect=card.getBoundingClientRect()
+  const dropAfter=(e.clientY-rect.top) > rect.height/2
+  document.querySelectorAll('.tb-card-drop-before,.tb-card-drop-after,.tb-brand-drop')
+    .forEach(el=>el.classList.remove('tb-card-drop-before','tb-card-drop-after','tb-brand-drop'))
+  card.classList.add(dropAfter?'tb-card-drop-after':'tb-card-drop-before')
+}
+function tbCardDragLeave(e){
+  // Don't clear here — we'd flicker. End handler clears everything.
+}
+function tbCardDrop(e,tgtMid,tgtBid,tgtPid){
+  if(_tbDrag?.kind!=='card')return
+  e.preventDefault()
+  e.stopPropagation()
+  const card=document.querySelector(`.tb-card[data-pid="${CSS.escape(tgtPid)}"]`)
+  const dropAfter=card && card.classList.contains('tb-card-drop-after')
+  moveProjectInto(tgtMid,tgtBid,tgtPid,dropAfter)
+  tbCardDragEnd()
+  save()
+  render()
+}
+
+// ── Brand-section drop (drop into an empty area within a brand group) ──
+function tbBrandDragOver(e,mid,bid){
+  if(_tbDrag?.kind!=='card')return
+  // Only highlight if the cursor is on the section background, not on a child card
+  if(e.target.closest('.tb-card'))return
+  e.preventDefault()
+  e.dataTransfer.dropEffect='move'
+  const sec=document.querySelector(`.tb-brand-section[data-mid="${CSS.escape(mid)}"][data-bid="${CSS.escape(bid)}"]`)
+  document.querySelectorAll('.tb-brand-drop').forEach(el=>el.classList.remove('tb-brand-drop'))
+  if(sec)sec.classList.add('tb-brand-drop')
+}
+function tbBrandDragLeave(e){
+  // Cleared on dragend
+}
+function tbBrandDrop(e,mid,bid){
+  if(_tbDrag?.kind!=='card')return
+  if(e.target.closest('.tb-card'))return  // card-level drop will handle it
+  e.preventDefault()
+  // Append to the end of this brand
+  moveProjectInto(mid,bid,null,true)
+  tbCardDragEnd()
+  save()
+  render()
+}
+
+// Card dropped on a column body but not on any card/brand → append to last brand of that member.
+function handleCardDropOnColumn(mid){
+  const m=state.members.find(x=>x.id===mid)
+  if(!m||!m.brands||!m.brands.length)return
+  // Pick the source brand if it exists in this member, else last brand
+  const src=findProject(_tbDrag.pid)
+  let targetBrand=m.brands.find(b=>src && b.name===src.b.name) || m.brands[m.brands.length-1]
+  moveProjectInto(mid,targetBrand.id,null,true)
+}
+
+// Move a project to a new (member, brand) location.
+// If tgtPid is null → append to end of brand. Otherwise insert before/after that project.
+function moveProjectInto(tgtMid,tgtBid,tgtPid,after){
+  if(!_tbDrag||_tbDrag.kind!=='card')return
+  const src=findProject(_tbDrag.pid)
+  if(!src)return
+  // Don't drop a card onto itself
+  if(tgtPid && tgtPid===_tbDrag.pid)return
+
+  // Find target brand
+  const tgtMember=state.members.find(m=>m.id===tgtMid)
+  if(!tgtMember)return
+  const tgtBrand=(tgtMember.brands||[]).find(b=>b.id===tgtBid)
+  if(!tgtBrand)return
+
+  // Remove from source brand
+  const srcIdx=src.b.projects.findIndex(p=>p.id===_tbDrag.pid)
+  if(srcIdx<0)return
+  const [moved]=src.b.projects.splice(srcIdx,1)
+
+  // Insert into target brand
+  if(!tgtPid){
+    tgtBrand.projects.push(moved)
+  }else{
+    let toIdx=tgtBrand.projects.findIndex(p=>p.id===tgtPid)
+    if(toIdx<0){tgtBrand.projects.push(moved);return}
+    if(after)toIdx++
+    tgtBrand.projects.splice(toIdx,0,moved)
+  }
 }
 
 function showView(v){
@@ -3520,6 +3764,16 @@ function modalSubmit(){
     const p=mkProject(name);fb.b.projects.push(p)
     openBrands.add(fb.b.id);openMembers.add(fb.m.id)
     selId=p.id
+    save();closeModal();render()
+
+  } else if(modalType==='projectFromMember'){
+    // Add project from the team-board column. modalCtx = member id, mf2 = chosen brand id.
+    const m=state.members.find(x=>x.id===modalCtx);if(!m)return
+    const bid=document.getElementById('mf2')?.value
+    const b=m.brands.find(b=>b.id===bid);if(!b)return
+    const p=mkProject(name)
+    b.projects.push(p)
+    openMembers.add(m.id);openBrands.add(b.id)
     save();closeModal();render()
 
   } else if(modalType==='quickTask'){
