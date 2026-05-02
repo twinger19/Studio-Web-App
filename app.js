@@ -224,7 +224,7 @@ function save() {
 }
 
 let selId=null          // selected project id
-let viewMode='worklist' // 'worklist'|'home'|'detail'|'calendar'|'sync'|'allcal'|'globaltasks'|'today'
+let viewMode='home' // 'home' (team board landing) | 'worklist' | 'detail' | 'calendar' | 'sync' | 'allcal' | 'globaltasks' | 'today'
 let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
@@ -618,11 +618,15 @@ function renderMain(){
     return
   }
 
-  if(!found){
+  // ── HOME / TEAM BOARD ─────────────────────────
+  // If no project is selected (or viewMode is explicitly 'home'),
+  // show the team-kanban landing page instead of an empty state.
+  if(!found||viewMode==='home'){
     vt.style.display='none'
-    bc.innerHTML=`<span>Studio</span>`
-    acts.innerHTML=''
-    content.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-ttl">No project open</div><div class="empty-sub">Select a project from the sidebar or create one.</div></div>`
+    bc.innerHTML=`<span class="bc-cur">Team Board</span>`
+    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="setScope('today')" title="Today's Focus">📆 Today</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('allcal')" title="All Teams Calendar">📅 Calendar</button>`
+    content.innerHTML=renderTeamBoard()
     return
   }
 
@@ -865,8 +869,8 @@ function renderWlRow({t,p,b,m}){
   }
   const assignee=state.members.find(mx=>mx.id===t.assignee)
   return `<div class="wl-row ${selected?'selected':''} ${prog}" data-key="${esc(key)}" onclick="onWlRowClick(event,'${esc(p.id)}','${esc(t.id)}')">
-    <input type="checkbox" class="wl-sel-chk" ${selected?'checked':''} onclick="event.stopPropagation();toggleTaskSelect('${esc(p.id)}','${esc(t.id)}')">
-    <input type="checkbox" class="wl-done-chk" ${prog==='completed'?'checked':''} onclick="event.stopPropagation()" onchange="toggleTaskGlobal('${esc(t.id)}','${esc(p.id)}',this.checked)">
+    <input type="checkbox" class="wl-done-chk" ${prog==='completed'?'checked':''} onclick="event.stopPropagation()" onchange="toggleTaskGlobal('${esc(t.id)}','${esc(p.id)}',this.checked)"
+      title="Mark complete · Shift+click row to multi-select">
     <div class="wl-main">
       <div class="wl-txt ${prog==='completed'?'done':''}">${esc(t.text)}</div>
       <div class="wl-meta">
@@ -2793,6 +2797,91 @@ function goProject(id){
   render()
 }
 
+// Land on the Team Board (the home view). Clears any active project.
+function goHome(){
+  selId=null
+  viewMode='home'
+  closeMobileSidebar()
+  render()
+}
+
+// ══════════════════════════════════════════════════════
+//  TEAM BOARD  (kanban-style landing view)
+//  Columns = members, sub-sections = brands, cards = projects.
+// ══════════════════════════════════════════════════════
+function renderTeamBoard(){
+  const today=todayIso()
+  const showArchived=!!state.showArchived
+  const members=(state.members||[])
+  if(!members.length){
+    return `<div class="empty"><div class="empty-ico">👥</div><div class="empty-ttl">No team members yet</div>
+      <div class="empty-sub">Add a team member from the sidebar to start building your board.</div></div>`
+  }
+  return `<div class="tb-board">
+    ${members.map(m=>renderTeamBoardColumn(m,today,showArchived)).join('')}
+  </div>`
+}
+
+function renderTeamBoardColumn(m,today,showArchived){
+  // Filter to brands that contain at least one visible project
+  const visibleBrands=(m.brands||[]).map(b=>{
+    const projects=(b.projects||[]).filter(p=>showArchived||p.status!=='archived')
+    return {b,projects}
+  }).filter(x=>x.projects.length)
+
+  const totalProjects=visibleBrands.reduce((a,x)=>a+x.projects.length,0)
+  const totalOpenTasks=visibleBrands.reduce((a,x)=>a+x.projects.reduce((b,p)=>
+    b+(p.tasks||[]).filter(t=>(t.progress||'')!=='completed').length,0),0)
+
+  return `<div class="tb-col">
+    <div class="tb-col-head">
+      <span class="tb-col-dot" style="background:${m.color||'#888'}"></span>
+      <span class="tb-col-name">${esc(m.name)}</span>
+      <span class="tb-col-count" title="${totalProjects} project${totalProjects===1?'':'s'} · ${totalOpenTasks} open task${totalOpenTasks===1?'':'s'}">${totalProjects}</span>
+    </div>
+    <div class="tb-col-body">
+      ${visibleBrands.length
+        ? visibleBrands.map(({b,projects})=>renderTeamBoardBrandSection(m,b,projects,today)).join('')
+        : '<div class="tb-empty-col">No active projects</div>'}
+    </div>
+  </div>`
+}
+
+function renderTeamBoardBrandSection(m,b,projects,today){
+  return `<div class="tb-brand-section">
+    <div class="tb-brand-head">${esc(b.name)}<span class="tb-brand-count">${projects.length}</span></div>
+    ${projects.map(p=>renderTeamBoardCard(p,m,b,today)).join('')}
+  </div>`
+}
+
+function renderTeamBoardCard(p,m,b,today){
+  const tasks=p.tasks||[]
+  const total=tasks.length
+  const done=tasks.filter(t=>(t.progress||'')==='completed').length
+  const pct=total?Math.round(done/total*100):0
+  const overdueCount=tasks.filter(t=>t.dueDate && t.dueDate<today && (t.progress||'')!=='completed').length
+  // Earliest open due date
+  const nextDue=tasks
+    .filter(t=>t.dueDate && (t.progress||'')!=='completed')
+    .map(t=>t.dueDate)
+    .sort()[0] || ''
+  const isOverdue=nextDue && nextDue<today
+  const isArch=p.status==='archived'
+
+  return `<div class="tb-card${isArch?' tb-arch':''}${isOverdue?' tb-card-has-overdue':''}"
+    onclick="goProject('${esc(p.id)}')"
+    title="Open ${esc(p.name)}">
+    <div class="tb-card-name">${esc(p.name)}</div>
+    <div class="tb-card-meta">
+      ${total?`<span class="tb-card-tasks" title="${done} of ${total} tasks complete">✓ ${done}/${total}</span>`:'<span class="tb-card-tasks tb-empty">No tasks</span>'}
+      ${overdueCount?`<span class="tb-card-overdue" title="${overdueCount} overdue task${overdueCount===1?'':'s'}">⚠ ${overdueCount} overdue</span>`:''}
+      ${nextDue?`<span class="tb-card-due${isOverdue?' tb-card-due-overdue':''}" title="Next due date">📅 ${esc(friendly(nextDue))}</span>`:''}
+      ${isArch?`<span class="tb-card-arch">Archived</span>`:''}
+    </div>
+    ${total?`<div class="tb-card-bar"><div class="tb-card-bar-fill" style="width:${pct}%"></div></div>`:''}
+  </div>`
+}
+
 function showView(v){
   viewMode=v;closeMobileSidebar();render()
 }
@@ -2961,6 +3050,46 @@ function toggleTask(tid,checked){
   const f=sel();if(!f)return
   const t=f.p.tasks.find(t=>t.id===tid)
   if(t){t.done=checked;t.progress=checked?'completed':'not-started';save();renderMain()}
+}
+
+// Look up a task by project id + task id across the whole workspace.
+// Used by the global views (Today / Overdue / This Week / All Open / No Date)
+// where there's no single "selected project."
+function findTaskByPidTid(pid,tid){
+  for(const m of state.members){
+    for(const b of m.brands){
+      for(const p of b.projects){
+        if(p.id===pid){
+          const t=p.tasks.find(t=>t.id===tid)
+          if(t)return {m,b,p,t}
+        }
+      }
+    }
+  }
+  return null
+}
+
+// Mark task complete/incomplete from any view. Re-renders so counts and
+// the Overdue/Today badges stay accurate.
+function toggleTaskGlobal(tid,pid,checked){
+  const f=findTaskByPidTid(pid,tid)
+  if(!f)return
+  f.t.done=checked
+  f.t.progress=checked?'completed':'not-started'
+  save()
+  renderMain()
+  renderSidebar()
+}
+
+// Change task progress (Not Started / In Progress / Completed) from any view.
+function toggleTaskProgressGlobal(tid,pid,value){
+  const f=findTaskByPidTid(pid,tid)
+  if(!f)return
+  f.t.progress=value
+  f.t.done=(value==='completed')
+  save()
+  renderMain()
+  renderSidebar()
 }
 
 function updateTaskTxt(tid,v){const f=sel();if(!f)return;const t=f.p.tasks.find(t=>t.id===tid);if(t&&v.trim()){t.text=v.trim();save()}}
