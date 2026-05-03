@@ -1,123 +1,183 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* ══════════════════════════════════════════════════════
-   STUDIO W — warm, soft, "studio journal" aesthetic.
-   Warm cream backgrounds · sage accent · ivory surfaces ·
-   serif display headlines · friendly pill buttons.
+   STUDIO W — Apple iOS 26 "Liquid Glass" aesthetic.
+   Cool fresh palette · translucent glass surfaces ·
+   heavy backdrop-blur · SF Pro system fonts ·
+   vibrant iOS Blue accent · continuous-curve buttons.
    ══════════════════════════════════════════════════════ */
 :root{
-  /* Sidebar — deep warm slate so creams pop without feeling clinical */
-  --sb:#2A2620;--sb-t:#928876;--sb-tb:#F1ECDF;--sb-h:rgba(255,250,240,.06);
-  /* Accent — soft sage. Calmer than indigo, friendlier on the eye. */
-  --acc:#5E8B7E;--acc2:#436F61;--acc-l:rgba(94,139,126,.13);
-  /* Surfaces — warm cream + ivory instead of cold grey/white */
-  --bg:#F1ECDF;--surf:#FBF7EC;--txt:#2A2620;--tm:#857C6E;
-  --bdr:#E2DACA;--bdr-l:#EFEAE0;
-  /* Status — earthy versions of the standard semantic palette */
-  --ok:#7C9A82;--ok-l:#E8EFEA;--red:#C4675A;--red-l:#F8EAE6;--warn:#D5A867;--warn-l:#F8F0E0;
-  /* Generously rounded everything */
+  /* Sidebar — deep cool slate, almost black, with a hint of blue */
+  --sb:#1C1C1E;--sb-t:#8E8E93;--sb-tb:#F2F2F7;--sb-h:rgba(255,255,255,.06);
+  /* Accent — iOS System Blue. Crisp, vibrant, signature Apple. */
+  --acc:#007AFF;--acc2:#0051D5;--acc-l:rgba(0,122,255,.12);
+  --acc-rgb:0,122,255;
+  /* Surfaces — iOS system grouped background + translucent glass tier */
+  --bg:#F2F2F7;--surf:rgba(255,255,255,.72);--surf-solid:#FFFFFF;
+  --txt:#000000;--tm:#6C6C70;
+  --bdr:rgba(60,60,67,.18);--bdr-l:rgba(60,60,67,.10);
+  /* Status — iOS system colors */
+  --ok:#34C759;--ok-l:rgba(52,199,89,.14);
+  --red:#FF3B30;--red-l:rgba(255,59,48,.13);
+  --warn:#FF9500;--warn-l:rgba(255,149,0,.14);
+  /* Continuous-curve corner radii (Apple "squircle" approximation) */
   --r:14px;--rs:10px;
-  /* Soft, warm shadows */
-  --sh:0 4px 18px rgba(64,52,32,.07),0 1px 3px rgba(64,52,32,.04);
-  /* Typography */
-  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --font-serif:'Fraunces',Georgia,'Times New Roman',serif;
+  /* Crisp glass shadows — soft, low, true black at low alpha */
+  --sh:0 1px 3px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  /* Typography — Apple system stack */
+  --font-sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro','Helvetica Neue','Inter',Arial,sans-serif;
+  --font-display:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro','Helvetica Neue',Arial,sans-serif;
+  /* Glass material — reusable */
+  --glass-bg:rgba(255,255,255,.72);
+  --glass-border:rgba(255,255,255,.55);
+  --glass-blur:saturate(1.8) blur(30px);
 }
 body{
   font-family:var(--font-sans);
-  background:linear-gradient(180deg,#F4EFE3 0%,#EAE3D2 100%);
+  /* Soft cool gradient: light sky to white. Picks up natural Apple "fresh" feel. */
+  background:
+    radial-gradient(ellipse 100% 60% at 80% 0%,rgba(0,122,255,.10) 0%,transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0% 100%,rgba(88,86,214,.08) 0%,transparent 55%),
+    linear-gradient(180deg,#F2F2F7 0%,#E9E9EE 100%);
   background-attachment:fixed;
   color:var(--txt);height:100vh;display:flex;overflow:hidden;font-size:14px;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   letter-spacing:-.01em;
 }
 
-/* ── DESIGN REFRESH OVERRIDES ─────────────────────────
-   Big-picture typography and shape tweaks. These layer
-   on top of existing rules to soften edges and add
-   personality without rewriting every component. */
-/* Display serif on titles, modals, empty states, hero text */
-.modal-ttl,.empty-ttl,.boot-title,.lock-title,.note-title-inp,
-.tb-col-name,.bc-cur,.cal-nav-title,.cal-agenda-day-num,
-.gcal-legend ~ .cal-nav .cal-nav-title,.tb-card-name{
-  font-family:var(--font-serif);
-  letter-spacing:-.015em;
+/* ── LIQUID GLASS DESIGN SYSTEM ─────────────────────────
+   Heavy backdrop-blur + subtle white specular highlight on
+   top edge to evoke iOS Liquid Glass material. */
+/* Display headings use SF Pro Display with tight tracking */
+.modal-ttl,.empty-ttl,.boot-title,.lock-title,.bc-cur,
+.cal-nav-title,.cal-agenda-day-num{
+  font-family:var(--font-display);
+  letter-spacing:-.025em;
+  font-weight:700;
+}
+.bc-cur{font-size:17px;font-weight:600;letter-spacing:-.018em}
+.tb-col-name,.tb-card-name,.note-title-inp{
+  font-family:var(--font-display);
+  letter-spacing:-.018em;
   font-weight:600;
 }
-/* Project title in breadcrumb gets a slightly bigger serif treatment */
-.bc-cur{font-size:17px;font-weight:600}
-/* Buttons feel more inviting when fully pill-shaped */
+
+/* Buttons — pill-shaped with iOS button feel + subtle press scale */
 .btn,.btn-sm,.btn-xs,.btn-ghost,.btn-primary,.btn-danger,
 .search-input,.cal-nav-btn,.vt-btn,.cal-filt-btn,.travel-filter-btn{
   border-radius:999px!important;
+  font-weight:600;
+  letter-spacing:-.005em;
+  transition:transform .12s ease,background .15s,box-shadow .15s;
 }
-/* Larger, softer corners on cards & containers */
+.btn:active,.btn-sm:active,.btn-xs:active,.btn-ghost:active,
+.btn-primary:active,.btn-danger:active,.cal-nav-btn:active,
+.vt-btn:active,.cal-filt-btn:active{transform:scale(.97)}
+
+/* Continuous-curve cards — radius bumped to 18-22px, like iOS widgets */
 .note-card,.tb-card,.tb-col,.cal-agenda-day,.dash-panel,
 .dash-alert,.stat-card,.card,.modal-box,.boot-card,.lock-box,
-.search-box,.chat-panel,.cmdbar-box,.gcal-cal-day,.bulk-bar,
+.search-box,.chat-panel,.cmdbar-box,.bulk-bar,
 .task-item,.add-note-btn,.task-micronote{
-  border-radius:18px;
+  border-radius:20px;
 }
-/* Inputs get rounded more than ye olde 6px (but pill buttons keep their 999px above). */
+.tb-col,.note-card{border-radius:22px}
+.modal-box,.search-box,.cmdbar-box,.lock-box{border-radius:26px}
+
+/* Inputs */
 input[type="text"],input[type="date"],input[type="color"],
 input:not([type]),textarea,select,
 .add-task-inp,.task-txt,.meeting-title-inp,.meeting-date-inp,
 .travel-title,.travel-link-inp,.add-task-bar,
 .modal-box input,.modal-box select,.modal-box textarea{
   border-radius:14px;
+  font-family:var(--font-sans);
 }
-.add-note-btn{border-radius:18px}
 .search-input{border-radius:999px!important}
-/* Slightly softer divider lines */
-.note-body-wrap,.note-head{border-color:var(--bdr-l)}
-/* Frosted-glass treatment for floating overlays — works on both themes */
-.modal-ov,.search-overlay,.cmdbar-ov{backdrop-filter:blur(14px);background:rgba(40,32,22,.32)}
-.modal-box,.search-box,.cmdbar-box{
-  backdrop-filter:blur(20px) saturate(1.05);
-  border:1px solid var(--bdr);
-  box-shadow:0 24px 60px rgba(64,52,32,.20);
+
+/* ── THE GLASS MATERIAL ──
+   Translucent white over a strong backdrop blur, plus a
+   subtle white highlight at the top for "specular shine". */
+.modal-box,.search-box,.cmdbar-box,
+.tb-col,.note-card,.tb-card,.cal-agenda-day,
+.boot-card,.lock-box{
+  background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.85) inset,
+    0 0 0 .5px rgba(0,0,0,.04),
+    0 8px 32px rgba(15,23,42,.08),
+    0 24px 56px rgba(15,23,42,.10);
 }
-/* Nicer images — match the rounded photo cards in the inspiration */
+/* Overlays get a darker veil + heavier blur — true iOS sheet feel */
+.modal-ov,.search-overlay,.cmdbar-ov{
+  backdrop-filter:saturate(1.4) blur(20px);
+  -webkit-backdrop-filter:saturate(1.4) blur(20px);
+  background:rgba(0,0,0,.32);
+}
+.chat-panel{
+  background:rgba(255,255,255,.78);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border-left:1px solid var(--glass-border);
+  box-shadow:-12px 0 48px rgba(15,23,42,.16);
+}
+
+/* The main content area gets a cleaner background since panels are translucent */
+.main{background:transparent}
+.content{background:transparent}
+.topbar{
+  background:rgba(255,255,255,.65);
+  backdrop-filter:saturate(1.6) blur(20px);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  border-bottom:1px solid var(--bdr-l);
+}
+
+/* Note images get continuous-curve corners */
 .rte-content img{border-radius:18px}
-/* Soft rings on focus instead of harsh outlines */
+
+/* Focus ring — iOS-style soft blue glow */
 input:focus-visible,textarea:focus-visible,select:focus-visible,
 [contenteditable]:focus-visible,button:focus-visible{
   outline:none;
-  box-shadow:0 0 0 3px rgba(94,139,126,.22);
+  box-shadow:0 0 0 4px rgba(var(--acc-rgb),.22);
 }
-/* Hover lift on cards & buttons feels more "alive" */
+
+/* Hover lift — clean and subtle, not warm-shadowed */
 .tb-card:hover,.note-card:hover,.dash-alert.clickable:hover{
   transform:translateY(-1px);
-  box-shadow:0 12px 28px rgba(64,52,32,.10);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.85) inset,
+    0 12px 36px rgba(15,23,42,.14);
 }
-/* Recolor a handful of legacy indigo gradients/glows so they match
-   the new sage accent. Don't worry about every rgba(99,118,218,…) —
-   only the visually dominant ones (FABs, chat bubbles, fills). */
+.tb-card:active{transform:scale(.98)}
+
+/* Recolor every hardcoded indigo glow/gradient to iOS Blue */
 .chat-fab,.chat-header-ico,.chat-msg.user .chat-bubble,.quick-fab{
   background:linear-gradient(135deg,var(--acc) 0%,var(--acc2) 100%)!important;
 }
-.chat-fab,.quick-fab{box-shadow:0 6px 22px rgba(94,139,126,.40)!important}
-.chat-fab:hover,.quick-fab:hover{box-shadow:0 10px 30px rgba(94,139,126,.50)!important}
-.chat-header-ico{box-shadow:0 3px 10px rgba(94,139,126,.30)!important}
+.chat-fab,.quick-fab{box-shadow:0 6px 22px rgba(0,122,255,.42)!important}
+.chat-fab:hover,.quick-fab:hover{box-shadow:0 10px 30px rgba(0,122,255,.55)!important}
+.chat-header-ico{box-shadow:0 3px 10px rgba(0,122,255,.30)!important}
 .dash-project-fill,.tb-card-bar-fill{
-  background:linear-gradient(90deg,var(--acc) 0%,#92B5A6 100%)!important;
+  background:linear-gradient(90deg,var(--acc) 0%,#5E9DFF 100%)!important;
 }
-/* Dragging / focus glows in sage instead of indigo */
-.proj-row.active{background:rgba(94,139,126,.18)!important}
-.sb-drag-over{background:rgba(94,139,126,.22)!important;outline-color:var(--acc)!important}
-.proj-drag-over{background:rgba(94,139,126,.10)!important;outline-color:rgba(94,139,126,.42)!important}
-.note-chev{background:rgba(94,139,126,.14)}
-.task-micronote{background:linear-gradient(180deg,rgba(94,139,126,.07) 0%,rgba(94,139,126,.04) 100%)!important;border-left-color:var(--acc)}
-.undo-btn{background:rgba(94,139,126,.45)}
-.undo-btn:hover{background:rgba(94,139,126,.65)}
-.add-note-btn:hover{box-shadow:0 10px 18px rgba(94,139,126,.10)!important}
-/* Boot screen — match the warm aesthetic */
-.boot-fallback{background:linear-gradient(180deg,#F4EFE3 0%,#EAE3D2 100%)}
-.boot-card{background:var(--surf);border-radius:22px}
-/* Lock screen tightens up too */
-.lock-box{border-radius:24px}
-/* Page-level breadcrumb gets a touch of breathing room */
-.bc-cur{font-size:18px}
+.proj-row.active{background:rgba(0,122,255,.18)!important}
+.sb-drag-over{background:rgba(0,122,255,.22)!important;outline-color:var(--acc)!important}
+.proj-drag-over{background:rgba(0,122,255,.08)!important;outline-color:rgba(0,122,255,.40)!important}
+.note-chev{background:rgba(0,122,255,.12)}
+.task-micronote{background:linear-gradient(180deg,rgba(0,122,255,.06) 0%,rgba(0,122,255,.03) 100%)!important;border-left-color:var(--acc)}
+.undo-btn{background:rgba(0,122,255,.45)}
+.undo-btn:hover{background:rgba(0,122,255,.65)}
+.add-note-btn:hover{box-shadow:0 10px 18px rgba(0,122,255,.10)!important}
+
+/* Boot screen — light cool gradient */
+.boot-fallback{background:linear-gradient(180deg,#F2F2F7 0%,#E5E5EA 100%)}
+
+/* The "AI" cleanup button on note toolbar — iOS purple→blue gradient feels native */
+.rte-btn-ai{background:linear-gradient(135deg,#5E5CE6 0%,#007AFF 100%)!important;color:#fff!important;border-color:transparent!important}
 .boot-fallback{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f7f8fb 0%,#eef1f7 100%);z-index:2000;padding:24px}
 .boot-fallback.hidden{display:none}
 .boot-card{max-width:560px;background:#fff;border:1px solid var(--bdr);border-radius:18px;box-shadow:0 24px 70px rgba(21,28,45,.12);padding:28px 24px;text-align:center}
@@ -819,17 +879,49 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
    DARK MODE — "moody masculine": deep charcoals + glassmorphism
    ══════════════════════════════════════════════════════ */
 :is([data-theme="dark"],[data-theme="system"].sys-dark){
-  /* Warm-dark instead of cold blue-grey. Cream-on-charcoal feels cozy. */
-  --bg:#1A1814;--surf:#262218;--txt:#EDE5D2;--tm:#9C8E7B;
-  --bdr:rgba(255,245,225,.10);--bdr-l:rgba(255,245,225,.05);
-  --acc-l:rgba(94,139,126,.20);--ok-l:rgba(124,154,130,.18);
-  --red-l:rgba(196,103,90,.18);--warn-l:rgba(213,168,103,.18);
-  --sh:0 4px 22px rgba(0,0,0,.50),0 1px 3px rgba(0,0,0,.4);
-  --sb:#13110D;--sb-tb:#EDE5D2;--sb-t:#928876;--sb-h:rgba(255,245,225,.07);
+  /* iOS dark mode: true black base, layered grey glass tiers, vibrant blue. */
+  --bg:#000000;--surf:rgba(28,28,30,.72);--surf-solid:#1C1C1E;
+  --txt:#FFFFFF;--tm:#98989D;
+  --bdr:rgba(84,84,88,.65);--bdr-l:rgba(84,84,88,.34);
+  --acc:#0A84FF;--acc2:#0050C7;--acc-l:rgba(10,132,255,.18);
+  --acc-rgb:10,132,255;
+  --ok:#30D158;--ok-l:rgba(48,209,88,.18);
+  --red:#FF453A;--red-l:rgba(255,69,58,.18);
+  --warn:#FF9F0A;--warn-l:rgba(255,159,10,.18);
+  --sh:0 8px 32px rgba(0,0,0,.55),0 1px 3px rgba(0,0,0,.45);
+  --sb:#0A0A0B;--sb-tb:#FFFFFF;--sb-t:#8E8E93;--sb-h:rgba(255,255,255,.05);
+  --glass-bg:rgba(28,28,30,.72);
+  --glass-border:rgba(255,255,255,.10);
 }
 :is([data-theme="dark"],[data-theme="system"].sys-dark) body{
-  background:linear-gradient(180deg,#1F1B14 0%,#15120D 100%);
+  background:
+    radial-gradient(ellipse 100% 60% at 80% 0%,rgba(10,132,255,.16) 0%,transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0% 100%,rgba(94,92,230,.12) 0%,transparent 55%),
+    #000000;
   background-attachment:fixed;
+}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .topbar{
+  background:rgba(28,28,30,.72);border-bottom-color:rgba(84,84,88,.34);
+}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .modal-box,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .search-box,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .cmdbar-box,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .tb-col,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .note-card,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .tb-card,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .cal-agenda-day,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .boot-card,
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .lock-box{
+  background:var(--glass-bg)!important;
+  border-color:var(--glass-border)!important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.06) inset,
+    0 0 0 .5px rgba(0,0,0,.6),
+    0 8px 32px rgba(0,0,0,.55),
+    0 24px 56px rgba(0,0,0,.45)!important;
+}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .chat-panel{
+  background:rgba(28,28,30,.78)!important;border-left-color:var(--glass-border);
 }
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .dash-panel{background:linear-gradient(180deg,#1A1D2E 0%,#141722 100%)!important}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .stat-card{background:#1A1D2E}
