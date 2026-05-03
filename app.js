@@ -621,12 +621,15 @@ function renderMain(){
   // ── HOME / TEAM BOARD ─────────────────────────
   // If no project is selected (or viewMode is explicitly 'home'),
   // show the team-kanban landing page instead of an empty state.
-  if(!found||viewMode==='home'){
+  // When the project sheet is open, we ALSO render the team board
+  // behind it and refresh the sheet contents.
+  if(!found||viewMode==='home'||projectSheetOpen){
     vt.style.display='none'
     bc.innerHTML=`<span class="bc-cur">Team Board</span>`
     acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="setScope('today')" title="Today's Focus">📆 Today</button>
       <button class="btn btn-ghost btn-sm" onclick="showView('allcal')" title="All Teams Calendar">📅 Calendar</button>`
     content.innerHTML=renderTeamBoard()
+    if(projectSheetOpen)renderProjectModal()
     return
   }
 
@@ -2907,12 +2910,96 @@ function closeMobileSidebar(){
   document.getElementById('sbOverlay').classList.remove('open')
 }
 
+// ──────────────────────────────────────────────────────
+//  PROJECT SHEET (modal that pops over the team board)
+// ──────────────────────────────────────────────────────
+let projectSheetOpen=false
+let sheetView='detail'  // internal toggle for the sheet — 'detail' or 'calendar'
+
 function goProject(id){
-  selId=id;showDone=false;viewMode='detail'
+  // Open the project as a sheet over the current view (Team Board, etc.).
+  // The underlying viewMode stays at 'home' so closing the sheet returns
+  // the user to the team board, not to a separate detail page.
+  selId=id
+  showDone=false
   const f=findProject(id)
   if(f){openMembers.add(f.m.id);openBrands.add(f.b.id)}
   closeMobileSidebar()
+  openProjectModal()
+}
+
+function openProjectModal(){
+  projectSheetOpen=true
+  sheetView='detail'
+  const ov=document.getElementById('projSheetOv')
+  if(ov)ov.style.display='flex'
+  document.body.style.overflow='hidden'
+  document.addEventListener('keydown',_onProjSheetKey)
+  renderProjectModal()
+}
+
+function closeProjectModal(){
+  projectSheetOpen=false
+  selId=null
+  // If the underlying view got knocked into 'detail'/'calendar' for any
+  // reason, snap it back to the team board.
+  if(viewMode==='detail'||viewMode==='calendar')viewMode='home'
+  const ov=document.getElementById('projSheetOv')
+  if(ov)ov.style.display='none'
+  document.body.style.overflow=''
+  document.removeEventListener('keydown',_onProjSheetKey)
   render()
+}
+
+function _onProjSheetKey(e){
+  if(e.key==='Escape'){
+    // Don't intercept Escape if a deeper modal is open on top.
+    const modalOv=document.getElementById('modalOv')
+    if(modalOv&&modalOv.style.display==='flex')return
+    closeProjectModal()
+  }
+}
+
+function setSheetView(v){
+  sheetView=v
+  renderProjectModal()
+}
+
+function renderProjectModal(){
+  if(!projectSheetOpen)return
+  const f=sel()
+  if(!f){closeProjectModal();return}
+  const {p,b,m}=f
+  const head=document.getElementById('projSheetHead')
+  const body=document.getElementById('projSheetBody')
+  if(!head||!body)return
+
+  const archBtn=p.status==='archived'
+    ? `<button class="btn btn-ghost btn-sm" onclick="unarchive()">↩ Unarchive</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="archiveProject()">Archive</button>`
+
+  head.innerHTML=`
+    <div class="proj-sheet-bc">
+      <div class="proj-sheet-bc-sub">${esc(m.name)} · ${esc(b.name)}</div>
+      <h2 class="proj-sheet-title" id="projSheetTitle">${esc(p.name)}</h2>
+    </div>
+    <div class="proj-sheet-acts">
+      <div class="view-toggle">
+        <button class="vt-btn ${sheetView==='detail'?'active':''}" onclick="setSheetView('detail')">📋 Detail</button>
+        <button class="vt-btn ${sheetView==='calendar'?'active':''}" onclick="setSheetView('calendar')">📅 Calendar</button>
+      </div>
+      ${archBtn}
+      <button class="proj-sheet-close" onclick="closeProjectModal()" title="Close (Esc)" aria-label="Close">✕</button>
+    </div>
+  `
+
+  if(sheetView==='calendar'){
+    body.innerHTML=renderCalendar(p,m)
+  }else{
+    body.innerHTML=renderDetail(p,m,b)
+    restoreEditors(p)
+    body.querySelectorAll('.task-txt').forEach(autoGrow)
+  }
 }
 
 // Land on the Team Board (the home view). Clears any active project.

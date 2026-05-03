@@ -91,6 +91,18 @@
   </div>
 </div>
 
+<!-- PROJECT DETAIL SHEET (opens over the team board on click) -->
+<div class="proj-sheet-ov" id="projSheetOv" style="display:none" onclick="if(event.target===this)closeProjectModal()">
+  <div class="proj-sheet" id="projSheet" role="dialog" aria-modal="true" aria-labelledby="projSheetTitle">
+    <div class="proj-sheet-head" id="projSheetHead">
+      <!-- Filled by JS: breadcrumb, title, view toggle, archive, close -->
+    </div>
+    <div class="proj-sheet-body" id="projSheetBody">
+      <!-- Filled by JS: the actual project detail or calendar -->
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-ov" id="modalOv" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
