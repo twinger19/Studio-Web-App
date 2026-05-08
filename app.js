@@ -3138,13 +3138,27 @@ function openProjectFromMemberModal(mid,preselectBid){
   document.getElementById('modalFields').innerHTML=`
     <div class="field"><label>Project name</label>
       <input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
-    <div class="field"><label>Brand</label>
-      <select id="mf2">${opts}</select></div>`
+    <div class="field"><label>Brand / Category</label>
+      <select id="mf2" onchange="handleBrandCategoryChange(this,mid)">${opts}<option value="__new__">＋ Add new brand / category…</option></select></div>`
   const okBtn=document.getElementById('modalOk')
   okBtn.textContent='Add project'
   okBtn.className='btn btn-primary'
   document.getElementById('modalOv').style.display='flex'
   setTimeout(()=>{const el=document.getElementById('mf1');if(el)el.focus()},30)
+}
+function handleBrandCategoryChange(sel,mid){
+  if(sel.value!=='__new__')return
+  const m=state.members.find(x=>x.id===mid)
+  if(!m){sel.value=m&&m.brands[0]?m.brands[0].id:'';return}
+  const name=prompt('New brand / category name:','')
+  if(!name||!name.trim()){sel.value=m.brands[0]?m.brands[0].id:'';return}
+  const b=mkBrand(name.trim(),[])
+  m.brands.push(b)
+  openBrands.add(b.id)
+  save()
+  const newOpts=m.brands.map(br=>`<option value="${br.id}">${esc(br.name)}</option>`).join('')
+  sel.innerHTML=newOpts+'<option value="__new__">＋ Add new brand / category…</option>'
+  sel.value=b.id
 }
 
 // ──────────────────────────────────────────────────────
