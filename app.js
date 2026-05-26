@@ -228,7 +228,7 @@ let viewMode='home' // 'home' (team board landing) | 'worklist' | 'detail' | 'ca
 let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
-let calFilter='all'     // 'all'|'tasks'|'meetings'
+let calFilter='all'     // 'all'|'tasks'|'meetings'|'cad-review'|'midpoint-review'|'line-final'
 let calOwnerFilter='all'
 let showDone=false
 let sortByDue=false     // sort tasks by due date
@@ -1310,8 +1310,13 @@ function renderDetail(p,m,b){
 
   const meetingsPanel=`<div class="tab-panel">
     <div id="meetingList">${meetings.map(mt=>meetingHTML(mt)).join('')||'<div class="tab-empty">No meetings scheduled.</div>'}</div>
-    ${!isArch?`<div class="add-meeting-row">
-      <input class="add-meeting-inp" id="newMTitle" placeholder="Meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
+    ${!isArch?`<div class="quick-meeting-btns">
+      <button class="quick-meeting-btn qm-cad" onclick="doAddQuickMeeting('cad-review')">📐 CAD Review</button>
+      <button class="quick-meeting-btn qm-mid" onclick="doAddQuickMeeting('midpoint-review')">🔍 Midpoint Review</button>
+      <button class="quick-meeting-btn qm-lf" onclick="doAddQuickMeeting('line-final')">✅ Line Final</button>
+    </div>
+    <div class="add-meeting-row">
+      <input class="add-meeting-inp" id="newMTitle" placeholder="Custom meeting title…" onkeydown="if(event.key==='Enter')doAddMeeting()">
       <input type="date" class="add-date-inp" id="newMDate" title="Meeting date">
       <button class="btn btn-primary btn-sm" onclick="doAddMeeting()">Add</button>
     </div>`:''}
@@ -1436,12 +1441,18 @@ function taskHTML(t){
 }
 
 // ── MEETING HTML ───────────────────────────────────────
+const MEETING_KIND_ICO={'cad-review':'📐','midpoint-review':'🔍','line-final':'✅'}
+const MEETING_KIND_LABEL={'cad-review':'CAD Review','midpoint-review':'Midpoint Review','line-final':'Line Final'}
 function meetingHTML(mt){
+  const ico=MEETING_KIND_ICO[mt.kind]||'🤝'
+  const badge=mt.kind?`<span class="meeting-kind-badge">${MEETING_KIND_LABEL[mt.kind]||mt.kind}</span>`:''
   return `<div class="meeting-item" data-mid="${mt.id}">
-    <div class="meeting-ico">🤝</div>
+    <div class="meeting-ico">${ico}</div>
     <div class="meeting-info">
-      <input class="meeting-title-inp" value="${esc(mt.title)}" placeholder="Meeting title"
-        onblur="updateMeetingTitle('${mt.id}',this.value)">
+      <div class="meeting-title-row">
+        <input class="meeting-title-inp" value="${esc(mt.title)}" placeholder="Meeting title"
+          onblur="updateMeetingTitle('${mt.id}',this.value)">${badge}
+      </div>
       <input type="date" class="meeting-date-inp" value="${mt.date||''}"
         onchange="updateMeetingDate('${mt.id}',this.value)" title="Meeting date">
     </div>
@@ -1596,6 +1607,13 @@ const PRODUCT_DEVELOPMENT_TEMPLATE=[
 ]
 
 function setCalFilter(f){calFilter=f;renderMain()}
+// Returns true when the active filter is one of the specific meeting-type filters
+function isMeetingTypeFilter(){return calFilter==='cad-review'||calFilter==='midpoint-review'||calFilter==='line-final'}
+// Returns true when a meeting object should be visible under the current filter
+function meetingPassesFilter(mt){
+  if(calFilter==='all'||calFilter==='meetings')return true
+  return mt.kind===calFilter
+}
 function setCalOwnerFilter(v){calOwnerFilter=v;renderMain()}
 function calendarRangeTitle(baseDate,count){
   const start=new Date(baseDate.getFullYear(),baseDate.getMonth(),1)
@@ -1627,6 +1645,9 @@ function renderCalendarControls(opts={}){
       <button class="cal-filt-btn ${calFilter==='all'?'on':''}" onclick="setCalFilter('all')">All</button>
       <button class="cal-filt-btn ${calFilter==='tasks'?'on':''}" onclick="setCalFilter('tasks')">Tasks</button>
       <button class="cal-filt-btn ${calFilter==='meetings'?'on':''}" onclick="setCalFilter('meetings')">Meetings</button>
+      <button class="cal-filt-btn cal-filt-cad ${calFilter==='cad-review'?'on':''}" onclick="setCalFilter('cad-review')">📐 CAD Review</button>
+      <button class="cal-filt-btn cal-filt-mid ${calFilter==='midpoint-review'?'on':''}" onclick="setCalFilter('midpoint-review')">🔍 Midpoint</button>
+      <button class="cal-filt-btn cal-filt-lf ${calFilter==='line-final'?'on':''}" onclick="setCalFilter('line-final')">✅ Line Final</button>
       <button class="travel-filter-btn${calTravelFilter?' on':''}" onclick="setCalTravelFilter()">✈️ Travel only</button>
       ${ownerOptions}
     </div>
@@ -1674,11 +1695,13 @@ function renderAgendaItem(item,opts={}){
     </div>`
   }
   if(item.isMeeting){
+    const mIco=MEETING_KIND_ICO[item.mt.kind]||'🤝'
+    const mSub=MEETING_KIND_LABEL[item.mt.kind]||'Meeting'
     return `<div class="cal-agenda-item agenda-meeting" onclick="goProject('${esc(projectId)}')">
-      <span class="agenda-bullet emoji">🤝</span>
+      <span class="agenda-bullet emoji">${mIco}</span>
       <div class="agenda-text">
         <div class="agenda-title">${esc(item.mt.title)}</div>
-        <div class="agenda-sub">Meeting · ${esc(projName)}</div>
+        <div class="agenda-sub">${esc(mSub)} · ${esc(projName)}</div>
       </div>
     </div>`
   }
@@ -1756,7 +1779,7 @@ function renderMonthView(p,m){
 
   // Build task map: date → [{t, color, isSpan, prog}]
   const taskMap={}
-  if(calFilter!=='meetings'){
+  if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
     p.tasks.forEach(t=>{
       if(!t.dueDate)return
       const prog=t.progress||'not-started'
@@ -1786,13 +1809,14 @@ function renderMonthView(p,m){
   if(calFilter!=='tasks'){
     ;(p.meetings||[]).forEach(mt=>{
       if(!mt.date)return
+      if(!meetingPassesFilter(mt))return
       addCalendarItem(meetingMap,mt.date,mt)
     })
   }
 
   // Build project range map
   const projRangeMap={}
-  if(calFilter!=='meetings'){
+  if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
     addProjectRange(projRangeMap,p,m)
   }
 
@@ -1832,8 +1856,9 @@ function renderMonthView(p,m){
           </div>`
         }
         if(item.isMeeting){
+          const cIco=MEETING_KIND_ICO[item.mt.kind]||'🤝'
           return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)}"
-            onclick="event.stopPropagation()">🤝 ${esc(item.mt.title.slice(0,18))}</div>`
+            onclick="event.stopPropagation()">${cIco} ${esc(item.mt.title.slice(0,22))}</div>`
         }
         return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)}"
           onclick="event.stopPropagation();goProject('${p.id}')">
@@ -1857,7 +1882,7 @@ function render6Month(p,m){
   const taskDates=new Set()
   const meetingDates=new Set()
 
-  if(calFilter!=='meetings'){
+  if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
     p.tasks.forEach(t=>{
       if(t.dueDate)taskDates.add(t.dueDate)
       if(t.startDate&&t.dueDate){
@@ -1869,12 +1894,12 @@ function render6Month(p,m){
   }
 
   if(calFilter!=='tasks'){
-    ;(p.meetings||[]).forEach(mt=>{if(mt.date)meetingDates.add(mt.date)})
+    ;(p.meetings||[]).forEach(mt=>{if(mt.date&&meetingPassesFilter(mt))meetingDates.add(mt.date)})
   }
 
   // Project range dates
   const projDates=new Set()
-  if(calFilter!=='meetings'){
+  if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
     if(p.startDate||p.endDate){
       eachIsoDay(p.startDate||p.endDate,p.endDate||p.startDate,iso=>projDates.add(iso))
     }
@@ -1923,7 +1948,7 @@ function renderAllCalendar(){
     for(const b of m.brands){
       for(const p of b.projects){
         if(p.status==='archived')continue
-        if(calFilter!=='meetings'){
+        if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
           // Tasks
           for(const t of p.tasks){
             if(!t.dueDate)continue
@@ -1954,6 +1979,7 @@ function renderAllCalendar(){
         if(calFilter!=='tasks'){
           for(const mt of p.meetings||[]){
             if(!mt.date)continue
+            if(!meetingPassesFilter(mt))continue
             addCalendarItem(meetingMap,mt.date,{mt,p,b,m})
           }
         }
@@ -2042,8 +2068,9 @@ function renderAllCalendar(){
             onclick="event.stopPropagation();goProject('${item.p.id}')">${ico} ${esc(item.tr.title.slice(0,16))}</div>`
         }
         if(item.isMeeting){
+          const gcIco=MEETING_KIND_ICO[item.mt.kind]||'🤝'
           return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)} — ${esc(item.p.name)}"
-            onclick="event.stopPropagation();goProject('${item.p.id}')">🤝 ${esc(item.mt.title.slice(0,16))}</div>`
+            onclick="event.stopPropagation();goProject('${item.p.id}')">${gcIco} ${esc(item.mt.title.slice(0,20))}</div>`
         }
         return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)} — ${esc(item.p.name)}"
           onclick="event.stopPropagation();goProject('${item.p.id}')">
@@ -3725,6 +3752,20 @@ function doAddMeeting(){
   f.p.meetings.push({id:uid(),title,date})
   save();renderMain()
   setTimeout(()=>{const el=document.getElementById('newMTitle');if(el){el.value='';el.focus()}},30)
+}
+
+function doAddQuickMeeting(kind){
+  const kindLabels={'cad-review':'CAD Review','midpoint-review':'Midpoint Review','line-final':'Line Final'}
+  const f=sel();if(!f)return
+  const title=`${f.p.name} ${kindLabels[kind]||kind}`
+  if(!f.p.meetings)f.p.meetings=[]
+  f.p.meetings.push({id:uid(),title,date:'',kind})
+  save();renderMain()
+  setTimeout(()=>{
+    const items=document.querySelectorAll('.meeting-item')
+    const last=items[items.length-1]
+    if(last){const dateInp=last.querySelector('.meeting-date-inp');if(dateInp)dateInp.focus()}
+  },50)
 }
 
 function removeMeeting(mid){

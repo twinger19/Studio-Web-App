@@ -749,9 +749,18 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .meeting-del{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:16px;padding:0 3px;opacity:0;transition:opacity .12s;flex-shrink:0}
 .meeting-item:hover .meeting-del{opacity:1}
 .meeting-del:hover{color:var(--red)}
-.add-meeting-row{display:flex;gap:8px;align-items:center;padding:10px 0 0;border-top:1px dashed var(--bdr);margin-top:6px}
+.add-meeting-row{display:flex;gap:8px;align-items:center;padding:8px 0 0}
 .add-meeting-inp{flex:1;border:none;background:transparent;font-size:13px;color:var(--txt);font-family:inherit;outline:none;padding:0}
 .add-meeting-inp::placeholder{color:var(--bdr)}
+/* Quick-add meeting buttons */
+.quick-meeting-btns{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0 6px;border-top:1px dashed var(--bdr);margin-top:6px}
+.quick-meeting-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;font-family:inherit;color:var(--tm);transition:all .14s;white-space:nowrap}
+.quick-meeting-btn:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+/* Meeting title row (kind badge lives alongside title input) */
+.meeting-title-row{display:flex;align-items:center;gap:6px;min-width:0;width:100%}
+.meeting-title-row .meeting-title-inp{flex:1;min-width:0}
+/* Meeting kind badge */
+.meeting-kind-badge{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:10px;background:#F0EEFF;color:#7B4FCC;white-space:nowrap;flex-shrink:0}
 
 /* ── TRAVEL & LOGISTICS ─────────────────────────────── */
 .travel-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bdr-l);align-items:flex-start}
@@ -930,6 +939,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
   .summary-ta{font-size:13px}
 
   /* Meetings */
+  .quick-meeting-btns{gap:5px}
+  .quick-meeting-btn{font-size:10px;padding:4px 9px}
   .add-meeting-row{flex-wrap:wrap}
   .add-travel-row{flex-wrap:wrap}
   .travel-link-inp,.travel-type-sel{width:100%!important;flex:none!important}
@@ -1056,7 +1067,8 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .prog-in-progress{background:rgba(217,147,74,.2)}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .prog-completed{background:rgba(61,173,118,.2)}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .dash-filter-btn{background:#1A1D2E;border-color:var(--bdr)}
-:is([data-theme="dark"],[data-theme="system"].sys-dark) :is(.dash-brand-select,.cal-owner-select,.cal-filt-btn,.cal-nav-btn){background:#1A1D2E;color:var(--txt);border-color:var(--bdr)}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) :is(.dash-brand-select,.cal-owner-select,.cal-filt-btn,.cal-nav-btn,.quick-meeting-btn){background:#1A1D2E;color:var(--txt);border-color:var(--bdr)}
+:is([data-theme="dark"],[data-theme="system"].sys-dark) .meeting-kind-badge{background:#2A2040;color:#B89EFF}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .link-open{background:rgba(99,118,218,.18)}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .topbar{background:var(--surf);border-bottom-color:var(--bdr)}
 :is([data-theme="dark"],[data-theme="system"].sys-dark) .view-toggle{background:var(--bg);border-color:var(--bdr)}
