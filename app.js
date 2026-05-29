@@ -3114,7 +3114,14 @@ function renderTeamBoardBrandSection(m,b,projects,today){
     ondragover="tbBrandDragOver(event,'${esc(m.id)}','${esc(b.id)}')"
     ondragleave="tbBrandDragLeave(event)"
     ondrop="tbBrandDrop(event,'${esc(m.id)}','${esc(b.id)}')">
-    <div class="tb-brand-head">${esc(b.name)}<span class="tb-brand-count">${projects.length}</span></div>
+    <div class="tb-brand-head">
+      <span class="tb-brand-name">${esc(b.name)}</span>
+      <span class="tb-brand-count">${projects.length}</span>
+      <span class="tb-brand-acts">
+        <button class="tb-brand-act" title="Rename category" onclick="event.stopPropagation();openModal('editBrand','${esc(b.id)}')">✏</button>
+        <button class="tb-brand-act del" title="Delete category" onclick="event.stopPropagation();deleteBrand('${esc(b.id)}')">✕</button>
+      </span>
+    </div>
     ${projects.map(p=>renderTeamBoardCard(p,m,b,today)).join('')}
   </div>`
 }
@@ -3186,7 +3193,7 @@ function openProjectFromMemberModal(mid,preselectBid){
     <div class="field"><label>Project name</label>
       <input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
     <div class="field"><label>Brand / Category</label>
-      <select id="mf2" onchange="handleBrandCategoryChange(this,mid)">${opts}<option value="__new__">＋ Add new brand / category…</option></select></div>`
+      <select id="mf2" onchange="handleBrandCategoryChange(this,'${mid}')">${opts}<option value="__new__">＋ Add new brand / category…</option></select></div>`
   const okBtn=document.getElementById('modalOk')
   okBtn.textContent='Add project'
   okBtn.className='btn btn-primary'
@@ -4030,7 +4037,7 @@ function showNotice(msg){
 // ══════════════════════════════════════════════════════
 function openModal(type,ctx){
   modalType=type;modalCtx=ctx
-  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date',editMember:'Edit team member',editBrand:'Edit brand / client',editProject:'Rename project',addLink:'Add link',editLink:'Edit link'}
+  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date',editMember:'Edit team member',editBrand:'Edit brand / category',editProject:'Rename project',addLink:'Add link',editLink:'Edit link'}
   document.getElementById('modalTtl').textContent=titles[type]||'Add'
   document.getElementById('modalOk').textContent=(type.startsWith('edit'))?'Save':'Add'
 
@@ -4042,10 +4049,10 @@ function openModal(type,ctx){
     fields=`<div class="field"><label>Name</label><input id="mf1" value="${esc(m.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
       <div class="field"><label>Color</label><input type="color" id="mf2" value="${m.color}" style="width:100%;height:40px;padding:2px;border:1px solid var(--bdr);border-radius:var(--rs);cursor:pointer"></div>`
   } else if(type==='brand'){
-    fields=`<div class="field"><label>Brand / Client Name</label><input id="mf1" placeholder="e.g. Nike" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+    fields=`<div class="field"><label>Brand / Category Name</label><input id="mf1" placeholder="e.g. Nike" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='editBrand'){
     const fb=findBrand(ctx);if(!fb)return
-    fields=`<div class="field"><label>Brand / Client Name</label><input id="mf1" value="${esc(fb.b.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+    fields=`<div class="field"><label>Brand / Category Name</label><input id="mf1" value="${esc(fb.b.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='project'){
     fields=`<div class="field"><label>Project Name</label><input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='editProject'){
@@ -4182,13 +4189,25 @@ function deleteMember(id){
 
 function deleteBrand(id){
   const fb=findBrand(id);if(!fb)return
-  const count=fb.b.projects.length
-  const warning=count>0?` This will also delete ${count} project(s).`:''
-  showConfirm(`Delete "${fb.b.name}"?${warning} This cannot be undone.`,()=>{
-    fb.m.brands=fb.m.brands.filter(b=>b.id!==id)
-    if(selId){const f=findProject(selId);if(!f)selId=null}
+  const {b,m}=fb
+  const count=b.projects.length
+  const doDelete=()=>{
+    // Deleting a brand/category never deletes its projects — they move to an "Unnamed" category.
+    if(count>0){
+      let dest=m.brands.find(x=>x.id!==b.id && (x.name||'').trim().toLowerCase()==='unnamed')
+      if(!dest){dest=mkBrand('Unnamed',[]);m.brands.push(dest)}
+      dest.projects.push(...b.projects)
+      b.projects=[]
+      openMembers.add(m.id);openBrands.add(dest.id)
+    }
+    m.brands=m.brands.filter(x=>x.id!==id)
     save();render()
-  })
+  }
+  if(count>0){
+    showConfirm(`Delete the category “${esc(b.name)}”? Its ${count} project${count===1?'':'s'} will move to “Unnamed” — they won't be deleted.`,doDelete,'Delete category')
+  }else{
+    showConfirm(`Delete the empty category “${esc(b.name)}”?`,doDelete,'Delete category')
+  }
 }
 
 // ══════════════════════════════════════════════════════
