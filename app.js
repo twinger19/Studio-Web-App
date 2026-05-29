@@ -1238,7 +1238,7 @@ function onGlobalKeydown(e){
 }
 let _lastKey=null
 let _globalKeyBound=false
-let activeProjectTab='tasks'   // 'summary'|'tasks'|'notes'|'meetings'|'travel'|'links'
+let activeProjectTab='notes'   // 'tasks'|'notes'|'meetings'|'travel'|'links'
 let _lastTabProjectId=null
 
 function setProjectTab(tab){
@@ -1262,24 +1262,20 @@ function renderDetail(p,m,b){
   // Reset tab when switching projects
   if(_lastTabProjectId!==p.id){
     _lastTabProjectId=p.id
-    activeProjectTab='tasks'
+    activeProjectTab='notes'
   }
 
   const taskCount=notStarted.length+inProg.length
   const tabs=[
-    {id:'summary',label:'Summary',ico:'📋',count:null},
-    {id:'tasks',label:'Tasks',ico:'✅',count:taskCount||null},
     {id:'notes',label:'Notes',ico:'📝',count:p.notes.length||null},
+    {id:'tasks',label:'Tasks',ico:'✅',count:taskCount||null},
     {id:'meetings',label:'Meetings',ico:'🤝',count:meetings.length||null},
     {id:'travel',label:'Travel',ico:'✈️',count:travel.length||null},
     {id:'links',label:'Links',ico:'🔗',count:p.links.length||null}
   ]
 
-  const summaryPanel=`<div class="tab-panel">
-    <textarea class="summary-ta" placeholder="Project overview, goals, key contacts, context…"
-      ${isArch?'disabled':''}
-      onblur="updateSummary(this.value)">${esc(p.summary||'')}</textarea>
-    <div class="proj-dates-row">
+  // Project Start/End dates — relocated into the header now that Summary is removed
+  const datesRow=`<div class="proj-dates-row">
       <div class="proj-date-field">
         <strong>Project Start</strong>
         <input type="date" class="proj-date-inp" value="${p.startDate||''}" ${isArch?'disabled':''}
@@ -1290,8 +1286,7 @@ function renderDetail(p,m,b){
         <input type="date" class="proj-date-inp" value="${p.endDate||''}" ${isArch?'disabled':''}
           onchange="updateProjEnd(this.value)" title="Overall project end date">
       </div>
-    </div>
-  </div>`
+    </div>`
 
   const tasksPanel=`<div class="tab-panel">
     <div class="tab-panel-toolbar">
@@ -1364,19 +1359,21 @@ function renderDetail(p,m,b){
     </div>`:''}
   </div>`
 
-  const panelMap={summary:summaryPanel,tasks:tasksPanel,notes:notesPanel,meetings:meetingsPanel,travel:travelPanel,links:linksPanel}
-  const activePanel=panelMap[activeProjectTab]||tasksPanel
+  const panelMap={tasks:tasksPanel,notes:notesPanel,meetings:meetingsPanel,travel:travelPanel,links:linksPanel}
+  const activePanel=panelMap[activeProjectTab]||notesPanel
 
   return `
     ${isArch?`<div class="arch-banner">📦 Archived — unarchive to edit</div>`:''}
     <div class="proj-hdr">
       <input class="proj-title-input" value="${esc(p.name)}" ${isArch?'disabled':''}
+        title="Click to rename this project"
         onblur="updateProjName(this.value)" onkeydown="if(event.key==='Enter')this.blur()">
       <div class="proj-meta">
         <span class="badge badge-${p.status}">${p.status}</span>
         <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
         ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
       </div>
+      ${datesRow}
     </div>
     <div class="proj-tabs">
       ${tabs.map(tb=>`<button class="proj-tab ${activeProjectTab===tb.id?'on':''}" onclick="setProjectTab('${tb.id}')">
@@ -2842,10 +2839,6 @@ function doSearch(q){
         hits.push({kind:'task',title:t.text,p,b,m,id:t.id,snippet:highlightSnippet(t.text,q)})
       }
     }
-    const summary=stripHtml(p.summary||'')
-    if(summary.toLowerCase().includes(qLow)){
-      hits.push({kind:'summary',title:`${p.name} Summary`,p,b,m,id:p.id,snippet:highlightSnippet(summary,q)})
-    }
     for(const l of p.links||[]){
       const hay=`${l.label||''} ${l.url||''}`.trim()
       if(hay.toLowerCase().includes(qLow)){
@@ -3558,7 +3551,7 @@ function toggleArchived(){state.showArchived=!state.showArchived;document.getEle
 // ══════════════════════════════════════════════════════
 //  PROJECT ACTIONS
 // ══════════════════════════════════════════════════════
-function updateProjName(v){const f=sel();if(f&&v.trim()){f.p.name=v.trim();save();renderSidebar()}}
+function updateProjName(v){const f=sel();if(f&&v.trim()){f.p.name=v.trim();save();render()}}
 function duplicateProject(pid){
   const f=findProject(pid);if(!f)return
   const copy=deepClone(f.p)
