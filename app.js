@@ -44,7 +44,7 @@ function mkBrand(name,projects=[]){return{id:uid(),name,projects}}
 function mkMember(name,color,brands=[],isMe=false){return{id:uid(),name,color,brands,isMe}}
 
 const DEFAULT={
-  version:'2.0',showArchived:false,scratchpad:'',
+  version:'2.0',showArchived:false,scratchpad:'',quickLinks:[],
   members:[
     mkMember('Me',COLORS[0],[mkBrand('My Projects',[])],true),
     mkMember('Pierre',COLORS[1],[mkBrand('Cole Haan',[mkProject('Cole Haan Spring 2027')]),mkBrand('Haggar',[]),mkBrand('Dockers',[])]),
@@ -63,6 +63,7 @@ let state = deepClone(DEFAULT)
 function migrate(d){
   // Top-level fields
   if(!('scratchpad'in d))d.scratchpad=''
+  if(!('quickLinks'in d))d.quickLinks=[]
   for(const m of d.members||[])for(const b of m.brands||[])for(const p of b.projects||[]){
     // Project-level fields
     if(!('summary'  in p))p.summary=''
@@ -461,6 +462,12 @@ function renderSidebar(){
       </button>
     </div>`
 
+  // Expand / collapse all controls for the project tree
+  h+=`<div class="sb-tree-controls">
+    <button class="sb-tree-ctrl" onclick="expandAll()" title="Expand all members, brands & projects">⊕ Expand all</button>
+    <button class="sb-tree-ctrl" onclick="collapseAll()" title="Collapse everything">⊖ Collapse all</button>
+  </div>`
+
   // Me
   const me=state.members.find(m=>m.isMe)
   if(me){h+=`<div class="sb-lbl">Me</div>`;h+=renderMember(me)}
@@ -512,6 +519,7 @@ function renderMember(m){
         <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
         ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
         <div class="sb-proj-actions">
+          <button class="sb-act-btn" title="Rename project" onclick="openModal('editProject','${p.id}');event.stopPropagation()">✏</button>
           <button class="sb-act-btn" title="${p.status==='archived'?'Unarchive project':'Archive project'}"
             onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
             ${p.status==='archived'?'↩':'📦'}
@@ -572,6 +580,7 @@ function renderBrand(b,memberId){
       <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
       ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
       <div class="sb-proj-actions">
+        <button class="sb-act-btn" title="Rename project" onclick="openModal('editProject','${p.id}');event.stopPropagation()">✏</button>
         <button class="sb-act-btn" title="${p.status==='archived'?'Unarchive project':'Archive project'}"
           onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
           ${p.status==='archived'?'↩':'📦'}
@@ -615,6 +624,14 @@ function renderMain(){
     bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">All Teams Calendar</span>`
     acts.innerHTML=''
     content.innerHTML=renderAllCalendar()
+    return
+  }
+
+  if(viewMode==='links'){
+    vt.style.display='none'
+    bc.innerHTML=`<span>Studio</span><span class="bc-sep">›</span><span class="bc-cur">Quick Links</span>`
+    acts.innerHTML=`<button class="btn btn-primary" onclick="openModal('addLink')">＋ Add link</button>`
+    content.innerHTML=renderLinksHub()
     return
   }
 
@@ -2926,6 +2943,15 @@ function goSearchResult(kind,pid,id){
 // ══════════════════════════════════════════════════════
 function toggleMember(id){openMembers.has(id)?openMembers.delete(id):openMembers.add(id);renderSidebar()}
 function toggleBrand(id){openBrands.has(id)?openBrands.delete(id):openBrands.add(id);renderSidebar()}
+function expandAll(){
+  openMembers=new Set();openBrands=new Set()
+  state.members.forEach(m=>{openMembers.add(m.id);m.brands.forEach(b=>openBrands.add(b.id))})
+  renderSidebar()
+}
+function collapseAll(){
+  openMembers=new Set();openBrands=new Set()
+  renderSidebar()
+}
 
 // ── MOBILE SIDEBAR ────────────────────────────────────
 function toggleMobileSidebar(){
@@ -3015,6 +3041,7 @@ function renderProjectModal(){
         <button class="vt-btn ${sheetView==='detail'?'active':''}" onclick="setSheetView('detail')">📋 Detail</button>
         <button class="vt-btn ${sheetView==='calendar'?'active':''}" onclick="setSheetView('calendar')">📅 Calendar</button>
       </div>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('editProject','${p.id}')">✏ Rename</button>
       ${archBtn}
       <button class="proj-sheet-close" onclick="closeProjectModal()" title="Close (Esc)" aria-label="Close">✕</button>
     </div>
@@ -3370,6 +3397,67 @@ function moveProjectInto(tgtMid,tgtBid,tgtPid,after){
     if(after)toIdx++
     tgtBrand.projects.splice(toIdx,0,moved)
   }
+}
+
+// ══════════════════════════════════════════════════════
+//  QUICK LINKS HUB
+// ══════════════════════════════════════════════════════
+function normalizeUrl(u){
+  u=(u||'').trim()
+  if(!u)return u
+  if(/^(https?:\/\/|mailto:)/i.test(u))return u
+  return 'https://'+u
+}
+function openQuickLink(id){
+  const lk=(state.quickLinks||[]).find(l=>l.id===id);if(!lk)return
+  window.open(lk.url,'_blank','noopener')
+}
+function deleteQuickLink(id){
+  const lk=(state.quickLinks||[]).find(l=>l.id===id);if(!lk)return
+  showConfirm(`Delete link "${esc(lk.label)}"? This cannot be undone.`,()=>{
+    state.quickLinks=(state.quickLinks||[]).filter(l=>l.id!==id)
+    save();renderMain()
+  })
+}
+function renderLinksHub(){
+  const links=state.quickLinks||[]
+  let h=`<div class="links-hub">
+    <div class="links-hub-head">
+      <div class="links-hub-titles">
+        <h2 class="links-hub-ttl">Quick Links</h2>
+        <p class="links-hub-sub">Your go-to links, always one click away — each opens in a new tab.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('addLink')">＋ Add link</button>
+    </div>`
+  if(!links.length){
+    h+=`<div class="links-empty">
+      <div class="links-empty-ico">🔗</div>
+      <div class="links-empty-ttl">No links yet</div>
+      <div class="links-empty-sub">Add the sites and docs you open all the time.</div>
+      <button class="btn btn-primary" onclick="openModal('addLink')" style="margin-top:14px">＋ Add your first link</button>
+    </div>`
+  }else{
+    h+=`<div class="links-list">`
+    links.forEach(l=>{
+      h+=`<div class="link-row">
+        <a class="link-main" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+          <span class="link-fav">🔗</span>
+          <span class="link-text">
+            <span class="link-label">${esc(l.label)}</span>
+            <span class="link-url">${esc(l.url)}</span>
+          </span>
+          <span class="link-open">↗</span>
+        </a>
+        <div class="link-acts">
+          <button class="link-act-btn" title="Edit link" onclick="openModal('editLink','${l.id}')">✏</button>
+          <button class="link-act-btn del" title="Delete link" onclick="deleteQuickLink('${l.id}')">✕</button>
+        </div>
+      </div>`
+    })
+    h+=`</div>`
+  }
+  h+=`</div>`
+  return h
 }
 
 function showView(v){
@@ -3949,7 +4037,7 @@ function showNotice(msg){
 // ══════════════════════════════════════════════════════
 function openModal(type,ctx){
   modalType=type;modalCtx=ctx
-  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date',editMember:'Edit team member',editBrand:'Edit brand / client'}
+  const titles={member:'Add team member',brand:'Add brand / client',project:'Add project',quickTask:'Add task for this date',editMember:'Edit team member',editBrand:'Edit brand / client',editProject:'Rename project',addLink:'Add link',editLink:'Edit link'}
   document.getElementById('modalTtl').textContent=titles[type]||'Add'
   document.getElementById('modalOk').textContent=(type.startsWith('edit'))?'Save':'Add'
 
@@ -3967,6 +4055,16 @@ function openModal(type,ctx){
     fields=`<div class="field"><label>Brand / Client Name</label><input id="mf1" value="${esc(fb.b.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='project'){
     fields=`<div class="field"><label>Project Name</label><input id="mf1" placeholder="e.g. Spring 2027 Collection" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  } else if(type==='editProject'){
+    const fp=findProject(ctx);if(!fp)return
+    fields=`<div class="field"><label>Project Name</label><input id="mf1" value="${esc(fp.p.name)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  } else if(type==='addLink'){
+    fields=`<div class="field"><label>Label <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(optional)</span></label><input id="mf1" placeholder="e.g. Figma — Spring board" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
+      <div class="field"><label>URL</label><input id="mf2" placeholder="https://…" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
+  } else if(type==='editLink'){
+    const lk=(state.quickLinks||[]).find(l=>l.id===ctx);if(!lk)return
+    fields=`<div class="field"><label>Label</label><input id="mf1" value="${esc(lk.label)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
+      <div class="field"><label>URL</label><input id="mf2" value="${esc(lk.url)}" onkeydown="if(event.key==='Enter')modalSubmit()"></div>`
   } else if(type==='quickTask'){
     fields=`<div class="field"><label>Task</label><input id="mf1" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')modalSubmit()"></div>
       <div class="field"><label>Due Date</label><input type="date" id="mf2" value="${ctx}"></div>`
@@ -3990,7 +4088,7 @@ function modalSubmit(){
   // Confirm and editMember/editBrand modals don't always have a name input,
   // so skip the empty-name guard for those. (Without this, clicking "Archive"
   // in the confirm popup did nothing because name was always empty.)
-  const requiresName = !['confirm','editMember','editBrand'].includes(modalType)
+  const requiresName = !['confirm','editMember','editBrand','addLink','editLink'].includes(modalType)
   if(requiresName){
     if(!name&&modalType!=='quickTask')return
     if(modalType==='quickTask'&&!name)return
@@ -4018,6 +4116,26 @@ function modalSubmit(){
     const fb=findBrand(modalCtx);if(!fb)return
     if(name)fb.b.name=name
     save();closeModal();render()
+
+  } else if(modalType==='editProject'){
+    const fp=findProject(modalCtx);if(!fp)return
+    if(name)fp.p.name=name
+    save();closeModal();render()
+    if(projectSheetOpen)renderProjectModal()
+
+  } else if(modalType==='addLink'){
+    const url=(document.getElementById('mf2')?.value||'').trim()
+    if(!url)return
+    if(!state.quickLinks)state.quickLinks=[]
+    state.quickLinks.push({id:uid(),label:name||url,url:normalizeUrl(url)})
+    save();closeModal();renderMain()
+
+  } else if(modalType==='editLink'){
+    const lk=(state.quickLinks||[]).find(l=>l.id===modalCtx);if(!lk)return
+    const url=(document.getElementById('mf2')?.value||'').trim()
+    if(name)lk.label=name
+    if(url)lk.url=normalizeUrl(url)
+    save();closeModal();renderMain()
 
   } else if(modalType==='project'){
     const fb=findBrand(modalCtx);if(!fb)return

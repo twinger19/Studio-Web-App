@@ -840,14 +840,20 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .lock-shake{animation:shake .35s ease}
 
 /* ── SIDEBAR ACTION BUTTONS ─────────────────────────── */
-.sb-actions{display:flex;gap:1px;opacity:0;transition:opacity .15s;flex-shrink:0;margin-right:2px}
+.sb-actions{display:flex;gap:1px;opacity:.55;transition:opacity .15s;flex-shrink:0;margin-right:2px}
 .member-row:hover .sb-actions,.brand-row:hover .sb-actions{opacity:1}
-.sb-proj-actions{display:flex;gap:1px;opacity:0;transition:opacity .15s;flex-shrink:0;margin-left:auto}
+.sb-proj-actions{display:flex;gap:1px;opacity:.55;transition:opacity .15s;flex-shrink:0;margin-left:auto}
 .proj-row:hover .sb-proj-actions{opacity:1}
 .p-arch-ico{font-size:10px;opacity:.4;margin-left:auto;flex-shrink:0}
 .sb-act-btn{background:none;border:none;cursor:pointer;padding:3px 5px;border-radius:4px;font-size:11px;color:var(--sb-t);transition:all .12s;line-height:1}
 .sb-act-btn:hover{background:rgba(255,255,255,.12);color:var(--sb-tb)}
 .sb-act-btn.del:hover{color:#F07070;background:rgba(240,112,112,.15)}
+
+/* ── SIDEBAR EXPAND / COLLAPSE CONTROLS ──────────────── */
+.sb-tree-controls{display:flex;gap:6px;padding:2px 12px 8px}
+.sb-tree-ctrl{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:var(--sb-t);cursor:pointer;padding:5px 8px;border-radius:7px;font-size:11px;font-weight:600;font-family:inherit;transition:all .12s;white-space:nowrap}
+.sb-tree-ctrl:hover{background:rgba(255,255,255,.13);color:var(--sb-tb)}
+.sb-tree-ctrl:active{transform:translateY(.5px)}
 
 /* ── MODAL ───────────────────────────────────────────── */
 .modal-ov{position:fixed;inset:0;background:rgba(15,18,35,.45);display:flex;align-items:center;justify-content:center;z-index:700;backdrop-filter:blur(2px)}
@@ -868,6 +874,30 @@ mark,.rte-content mark{background:#FFE566;border-radius:2px;padding:0 2px}
 .sync-actions{display:flex;gap:8px;flex-wrap:wrap}
 .drop-zone{border:2px dashed var(--bdr);border-radius:var(--rs);padding:24px;text-align:center;font-size:13px;color:var(--tm);cursor:pointer;transition:all .15s;margin-top:14px}
 .drop-zone:hover,.drop-zone.drag-over{border-color:var(--acc);background:var(--acc-l);color:var(--acc)}
+
+/* ── QUICK LINKS HUB ─────────────────────────────────── */
+.links-hub{max-width:760px;margin:0 auto;padding:8px 4px 40px}
+.links-hub-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+.links-hub-ttl{font-size:20px;font-weight:700;margin:0 0 4px}
+.links-hub-sub{font-size:13px;color:var(--tm);margin:0;line-height:1.5}
+.links-list{display:flex;flex-direction:column;gap:8px}
+.link-row{display:flex;align-items:stretch;gap:6px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);box-shadow:var(--sh);transition:border-color .14s,box-shadow .14s,transform .14s;overflow:hidden}
+.link-row:hover{border-color:rgba(var(--acc-rgb),.45);box-shadow:0 6px 22px rgba(0,0,0,.12),0 0 0 .5px rgba(var(--acc-rgb),.25);transform:translateY(-1px)}
+.link-main{flex:1;display:flex;align-items:center;gap:12px;padding:13px 14px;text-decoration:none;color:inherit;min-width:0}
+.link-fav{font-size:16px;flex-shrink:0;opacity:.85}
+.link-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.link-label{font-size:14px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-url{font-size:12px;color:var(--tm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-open{font-size:14px;color:var(--tm);opacity:0;transition:opacity .14s;flex-shrink:0}
+.link-row:hover .link-open{opacity:.7}
+.link-acts{display:flex;align-items:center;gap:2px;padding:0 10px 0 4px;flex-shrink:0}
+.link-act-btn{background:none;border:none;cursor:pointer;padding:6px 8px;border-radius:7px;font-size:12px;color:var(--tm);transition:all .12s;line-height:1}
+.link-act-btn:hover{background:var(--bg);color:var(--txt)}
+.link-act-btn.del:hover{color:#E0533F;background:rgba(224,83,63,.12)}
+.links-empty{text-align:center;padding:56px 20px;color:var(--tm)}
+.links-empty-ico{font-size:40px;margin-bottom:12px}
+.links-empty-ttl{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.links-empty-sub{font-size:13px;line-height:1.5}
 
 /* ── MOBILE HAMBURGER (hidden on desktop) ────────────── */
 .mob-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:6px 8px;color:var(--sb-tb);font-size:20px;line-height:1;flex-shrink:0}
