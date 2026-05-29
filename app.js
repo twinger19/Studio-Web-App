@@ -1425,7 +1425,7 @@ function taskHTML(t){
           </select>
           <select class="task-assignee-sel" onchange="updateTaskAssignee('${t.id}',this.value)" title="Assignee">
             <option value="" ${!t.assignee?'selected':''}>Assign…</option>
-            ${state.members.filter(mx=>!mx.isMe).map(mx=>`<option value="${mx.id}" ${t.assignee===mx.id?'selected':''}>${esc(mx.name)}</option>`).join('')}
+            ${state.members.map(mx=>`<option value="${mx.id}" ${t.assignee===mx.id?'selected':''}>${esc(mx.name)}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -4639,7 +4639,7 @@ function applyTheme(mode){
 }
 
 function initTheme(){
-  const stored=safeStorageGet('studio_theme')||'light'
+  const stored=safeStorageGet('studio_theme')||'dark'
   themeMode=stored
   // Apply immediately (before render so no flash)
   const root=document.documentElement

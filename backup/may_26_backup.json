@@ -459,14 +459,14 @@
               "notes": [
                 {
                   "id": "mp5x3oj1gd1e",
-                  "body": "- Puma gets pulled off site randomly and then his own work gets pushed to the side.&nbsp;<div>- Working with emma in NY has been a challenge.&nbsp;</div><div>- Puma - when he gets pulled away to like a week in NY but then his work isnt getting done. Doesnt feel like you have backup.&nbsp;&nbsp;</div><div>-&nbsp; Goal around how he can puma be allowed to focus more on his own work.&nbsp;</div><div>- Goal around being able.&nbsp;</div><div>- Sarah, Michelle and Anne - If they are not in the office.&nbsp;</div><div>- Set up a work station for buckle changes.&nbsp;</div><div>- Could we get approval to setup a mini sample room.&nbsp;</div><div>- How can we utilize Rebecca to be helpful. CAD book, work with lauren on PRF's, line book. CAD's to Tech Pack. PLM management.&nbsp;</div><div>-&nbsp;</div><div><br></div>",
+                  "body": "- Puma gets pulled off site randomly and then his own work gets pushed to the side.&nbsp;<div>- Working with emma in NY has been a challenge.&nbsp;</div><div>- Puma - when he gets pulled away to like a week in NY but then his work isnt getting done. Doesnt feel like you have backup.&nbsp;&nbsp;</div><div>-&nbsp; Goal around how he can puma be allowed to focus more on his own work.&nbsp;</div><div>- Sarah, Michelle and Anne - If they are not in the office.&nbsp;</div><div>- Set up a work station for buckle changes.&nbsp;</div><div>- Could we get approval to setup a mini sample room.&nbsp;</div><div>- How can we utilize Rebecca to be helpful. CAD book, work with lauren on PRF's, line book. CAD's to Tech Pack. PLM management.&nbsp;</div><div>-&nbsp;</div><div><br></div>",
                   "date": "May 14, 2026",
                   "open": true,
                   "title": "Goals"
                 }
               ],
               "tasks": [],
-              "status": "active",
+              "status": "archived",
               "travel": [],
               "endDate": "",
               "summary": "",
@@ -572,6 +572,19 @@
               "summary": "",
               "meetings": [],
               "startDate": ""
+            },
+            {
+              "id": "mpmlw2nd8cd4",
+              "name": "test",
+              "links": [],
+              "notes": [],
+              "tasks": [],
+              "status": "archived",
+              "travel": [],
+              "endDate": "",
+              "summary": "",
+              "meetings": [],
+              "startDate": ""
             }
           ]
         },
@@ -589,6 +602,13 @@
               "name": "Director TB Meeting",
               "links": [],
               "notes": [
+                {
+                  "id": "mppyahxfc8px",
+                  "body": "<ol><li>Pull Levi's Elevated for Line Final - Macy's, Nordstrom.&nbsp;</li><li>Rebecca to pull trend by 22nd. 2-3 trend capsules. Work with Valerie &amp; Dulce&nbsp;</li><li>Pull swatches, references, cads for Haggar Sport&nbsp;</li></ol>",
+                  "date": "May 28, 2026",
+                  "open": true,
+                  "title": "May 28th"
+                },
                 {
                   "id": "movtmr3ftq2r",
                   "body": "<ul><li><strong>Columbia / Dockers Meeting Part 2&nbsp;</strong><ul><li>Columbia - Work with sales on newness&nbsp;</li><li>Dockers - Work with sales on aligning the direction of Dockers.&nbsp;</li><li>New Friends (Jenny) - If they meet minimums, then they should have access to all newness.&nbsp;</li><li>Send Davina Photos of Where we Land&nbsp;</li></ul></li><li><strong>5/18-5/19 meetings</strong><ul><li>18th - Wallet strategy meeting.&nbsp; - What types of cool marketing.&nbsp;</li><li>19th - Internal belt midpoints - Current assortments - New Spring 2017 - Align on missing opportunities&nbsp;</li></ul></li><li><strong>June meetings - market&nbsp;</strong></li><p><strong>Kohl's June 9th&nbsp;</strong></p><p><strong><br></strong></p><p>Interns Start June 1st&nbsp;</p></ul><div><br></div><ul><li>Showrooms<ul><li>Post mortem w/ Creative Services.&nbsp;</li><li>Can you send up a calendar when we need to hit deadlines</li><li>Can have them do some trials in AI / Run Experiment using existing project.&nbsp;</li><li>Pull different product on our models. - Experiment through september.&nbsp;</li><li><br></li></ul></li><li>Fall 27 calendar</li><li>We need to start on Fall '27 Calendar&nbsp;</li><li>Rough out a Fall '27 Calendar by May 18th&nbsp;</li></ul><div><br></div><div>Chicago Team</div><div>Cleaning Day&nbsp;</div><div>Monthly Cleaning Afternoon with Merediths team.&nbsp;</div><div><br></div><!--ScriptorEndFragment-->",
@@ -662,13 +682,13 @@
                 },
                 {
                   "id": "movvqa64urrf",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Set up monthly cleaning time for Chicago",
                   "dueDate": "2026-05-15",
                   "assignee": "",
                   "priority": "medium",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-07"
                 }
               ],
@@ -693,13 +713,13 @@
               "tasks": [
                 {
                   "id": "mp4451oftc6u",
-                  "done": false,
+                  "done": true,
                   "note": "Carly is going to reach out on additional logo options. Or can we do the logos + the correct lock up. ",
                   "text": "Levi's Signature Updates - Puma to use Levi's Strauss Signature Logo (that was approved) until we get alternative logos.",
                   "dueDate": "",
                   "assignee": "mnuy76qzjlsn",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
@@ -726,90 +746,90 @@
                 },
                 {
                   "id": "mp44b8z27wfw",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Next Week - Wallet Meeting. Belt Meeting. Anything planned monday or can i plan somethign with my team?",
                   "dueDate": "2026-05-19",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp44nsrcc5xn",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Workwear Next week we will discuss. Sarah and Michelle take design lead with Puma helping.",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp44tocc0io0",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Check in with seasonal team on Fall Levis calendar to coordinate.Also signature.",
                   "dueDate": "2026-05-13",
                   "assignee": "",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp44xg541boj",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Send tracking to Fendi and Chris with tracking so they can follow up.",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp44zcfihagm",
-                  "done": false,
+                  "done": true,
                   "note": "National Brands Review (wallets) - Then go into strategy. August Prelim with Sales. Full samples and story. Customer specific, brand specific. Ready December 1st for full presentations and samples. Get into stores and off pricers especially. ",
                   "text": "Pierre will have a calendar for next steps.",
                   "dueDate": "2026-05-15",
                   "assignee": "mnuy76qza649",
                   "priority": "urgent",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-13"
                 },
                 {
                   "id": "mp45775jkiuq",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Haggar Wallets - We have real opportunity to push boundaries. What is pierres plan. How does it fit into strategy.",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp459dmdl3sk",
-                  "done": false,
+                  "done": true,
                   "note": "Is this something we can open Haggar Sport to other designers to get more ideas. Dont hold back. Looks whats happening in performance footwear. \n",
                   "text": "Haggar Belts - Davina doesnt think it looks different enough.  Sport needs a lot of attention.",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mp46nu3ch4f7",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Track lock dickies, cut out buckle, third new one for the steel stamped ratchet buckles. Vizcom the designs. For jenny",
                   "dueDate": "2026-05-22",
                   "assignee": "",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-13"
                 }
               ],
@@ -1051,7 +1071,14 @@
               "travel": [],
               "endDate": "",
               "summary": "",
-              "meetings": [],
+              "meetings": [
+                {
+                  "id": "mpnafgpifyb0",
+                  "date": "2026-06-04",
+                  "kind": "line-final",
+                  "title": "Levi's Spring 2027 Line Final"
+                }
+              ],
               "startDate": ""
             }
           ]
@@ -1173,58 +1200,58 @@
                 },
                 {
                   "id": "mnxfakh9f22c",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Sampling Time Phase",
                   "dueDate": "2026-05-22",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-04-06"
                 },
                 {
                   "id": "mnxfakh932cx",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "First Samples Due",
                   "dueDate": "2026-05-29",
                   "assignee": "mnuy76qzjlsn",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-24"
                 },
                 {
                   "id": "mnxfakh9clbk",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Midpoint Prep Phase",
                   "dueDate": "2026-05-29",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
                   "id": "mnxfakh9hag1",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Internal Midpoint",
-                  "dueDate": "2026-05-29",
-                  "assignee": "",
+                  "dueDate": "2026-05-26",
+                  "assignee": "mnuy76qzjlsn",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-25"
                 },
                 {
                   "id": "mnxfakh9o7zo",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "External Midpoint",
-                  "dueDate": "",
-                  "assignee": "",
+                  "dueDate": "2026-05-26",
+                  "assignee": "mnuy76qzjlsn",
                   "priority": "",
-                  "progress": "not-started",
-                  "startDate": ""
+                  "progress": "completed",
+                  "startDate": "2026-05-26"
                 },
                 {
                   "id": "mnxfakh9kwtj",
@@ -1413,13 +1440,13 @@
               "tasks": [
                 {
                   "id": "movzej7e43mo",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Samples Due - Levi's Global",
                   "dueDate": "2026-05-14",
                   "assignee": "",
                   "priority": "medium",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-04-30"
                 }
               ],
@@ -1604,7 +1631,7 @@
                   "done": false,
                   "note": "",
                   "text": "Line Final Prep",
-                  "dueDate": "2026-06-05",
+                  "dueDate": "2026-06-12",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
@@ -1615,7 +1642,7 @@
                   "done": false,
                   "note": "",
                   "text": "Internal Line Final",
-                  "dueDate": "2026-06-05",
+                  "dueDate": "2026-06-12",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
@@ -1626,7 +1653,7 @@
                   "done": false,
                   "note": "",
                   "text": "External Line Final",
-                  "dueDate": "2026-06-09",
+                  "dueDate": "2026-06-19",
                   "assignee": "",
                   "priority": "medium",
                   "progress": "not-started",
@@ -1666,14 +1693,10 @@
                   "title": "Alyssa CK Market Meeting"
                 },
                 {
-                  "id": "mpe9difk6s2t",
-                  "date": "2026-06-19",
-                  "title": "CK Line Final"
-                },
-                {
-                  "id": "mpe9hlt7hbyg",
-                  "date": "2026-06-15",
-                  "title": "Internal CK Line Final"
+                  "id": "mppzf35aguu6",
+                  "date": "2026-06-17",
+                  "kind": "line-final",
+                  "title": "CK Spring 2027 Line Final"
                 }
               ],
               "startDate": ""
@@ -1894,9 +1917,10 @@
                   "title": "Macys Market Meeting - All Brands, Belts, Wallets"
                 },
                 {
-                  "id": "mpea56vgneov",
-                  "date": "2026-06-22",
-                  "title": "Line Final - Tommy Hilfiger"
+                  "id": "mpo7v8vc4zto",
+                  "date": "2026-06-17",
+                  "kind": "line-final",
+                  "title": "Tommy Hilfiger Spring 2027 Line Final"
                 }
               ],
               "startDate": "2026-01-05"
@@ -1915,13 +1939,13 @@
               "tasks": [
                 {
                   "id": "mp1l2ln0rfp0",
-                  "done": false,
+                  "done": true,
                   "note": "Who's the brand lead. ",
                   "text": "Post Midpoint - Touch base on next steps",
                   "dueDate": "2026-05-14",
                   "assignee": "",
                   "priority": "medium",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 }
               ],
@@ -1962,13 +1986,13 @@
                 },
                 {
                   "id": "mp5uk8sln6u4",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Manzella Line Sheet for Davina.",
                   "dueDate": "2026-05-15",
                   "assignee": "",
                   "priority": "high",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-11"
                 }
               ],
@@ -2113,13 +2137,13 @@
                 },
                 {
                   "id": "mnw5pwqrjgn9",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "External Midpoint",
                   "dueDate": "2026-05-22",
                   "assignee": "",
                   "priority": "medium",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": "2026-05-18"
                 },
                 {
@@ -2127,21 +2151,21 @@
                   "done": false,
                   "note": "",
                   "text": "Tech Packs Updates",
-                  "dueDate": "",
+                  "dueDate": "2026-05-29",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
-                  "startDate": ""
+                  "progress": "in-progress",
+                  "startDate": "2026-05-25"
                 },
                 {
                   "id": "mnw5pwqra13w",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Second Round Sample Phase",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
@@ -2160,11 +2184,11 @@
                   "done": false,
                   "note": "",
                   "text": "Line Final Prep",
-                  "dueDate": "",
+                  "dueDate": "2026-06-12",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
-                  "startDate": ""
+                  "startDate": "2026-06-08"
                 },
                 {
                   "id": "mnw5pwqry5km",
@@ -2182,11 +2206,11 @@
                   "done": false,
                   "note": "",
                   "text": "External Line Final",
-                  "dueDate": "",
+                  "dueDate": "2026-06-19",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
-                  "startDate": ""
+                  "startDate": "2026-06-15"
                 },
                 {
                   "id": "mnw5pwqr35yp",
@@ -2204,7 +2228,14 @@
               "travel": [],
               "endDate": "",
               "summary": "",
-              "meetings": [],
+              "meetings": [
+                {
+                  "id": "mpo77dm7krsq",
+                  "date": "2026-06-17",
+                  "kind": "line-final",
+                  "title": "Columbia Spring 2027 Line Final"
+                }
+              ],
               "startDate": ""
             },
             {
@@ -2219,9 +2250,16 @@
               "summary": "",
               "meetings": [
                 {
-                  "id": "mopxyer4we82",
-                  "date": "2026-10-15",
-                  "title": "Columbia Fall 2026 Line Final"
+                  "id": "mpo7kbpr82ee",
+                  "date": "2026-08-24",
+                  "kind": "cad-review",
+                  "title": "Columbia Fall 2027 CAD Review"
+                },
+                {
+                  "id": "mpo7o419luft",
+                  "date": "",
+                  "kind": "midpoint-review",
+                  "title": "Columbia Fall 2027 Midpoint Review"
                 }
               ],
               "startDate": ""
@@ -2273,14 +2311,14 @@
                   "id": "mpe7l23vj6ut",
                   "body": "<p><strong>Haggar</strong></p><p>- Nubuck tubular belt like Cole Haan for sport? Stretch?&nbsp;</p><p>- Can we do an update to the stretch braid in nubuck? (Tubular)&nbsp;</p><p>- Haggar needs to get to 19 pegs.&nbsp;</p><p>- Non Fabric Sport - Find a new PU that feels sporty. Platform Colors.&nbsp;</p><p>- Brad wants a tubular fabric stretch belt based on the KCR Fabric pant.&nbsp;</p>",
                   "date": "May 20, 2026",
-                  "open": true,
+                  "open": false,
                   "title": "Internal Midpoint Meeting "
                 },
                 {
                   "id": "movvzg3h3kcu",
                   "body": "<div>- William is looking at Cole Haan as an extension of our core assortment.</div><div>- June 24th - Buy&nbsp;</div><div>- June 17th - Line Final&nbsp;</div><div>- Have a call with the factory when you send out development.&nbsp;</div><div>-&nbsp;</div><div><br></div><div><br><div><br></div><div><br></div></div>",
                   "date": "May 7, 2026",
-                  "open": true,
+                  "open": false,
                   "title": "Cole Haan Spring 2027 Post Midpoint TB "
                 },
                 {
@@ -2404,13 +2442,13 @@
                 },
                 {
                   "id": "mnw5m0io06th",
-                  "done": false,
+                  "done": true,
                   "note": "",
                   "text": "Tech Packs Updates",
                   "dueDate": "",
                   "assignee": "",
                   "priority": "",
-                  "progress": "not-started",
+                  "progress": "completed",
                   "startDate": ""
                 },
                 {
@@ -2418,22 +2456,22 @@
                   "done": false,
                   "note": "",
                   "text": "Second Round Sample Phase",
-                  "dueDate": "",
+                  "dueDate": "2026-06-12",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
-                  "startDate": ""
+                  "startDate": "2026-03-30"
                 },
                 {
                   "id": "mnw5m0iozmij",
                   "done": false,
                   "note": "",
                   "text": "Second Round Samples Due",
-                  "dueDate": "",
+                  "dueDate": "2026-06-12",
                   "assignee": "",
                   "priority": "",
                   "progress": "not-started",
-                  "startDate": ""
+                  "startDate": "2026-06-08"
                 },
                 {
                   "id": "mnw5m0ioy74h",
@@ -2486,9 +2524,10 @@
               "summary": "",
               "meetings": [
                 {
-                  "id": "mnw5jxuqeiyq",
-                  "date": "",
-                  "title": "LINE FINAL"
+                  "id": "mppzhc2kdgqz",
+                  "date": "2026-06-17",
+                  "kind": "line-final",
+                  "title": "Cole Haan Spring 2027 Line Final"
                 }
               ],
               "startDate": ""
@@ -2529,7 +2568,7 @@
                   "id": "mnxeoekbp7be",
                   "body": "Samples coming in. Shipping directly to NY&nbsp;",
                   "date": "Apr 13, 2026",
-                  "open": false,
+                  "open": true,
                   "title": "Haggar Sams Club "
                 }
               ],
