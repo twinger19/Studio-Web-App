@@ -38,13 +38,13 @@ function addProjectRange(map,p,m,extra={}){
 // ══════════════════════════════════════════════════════
 //  DEFAULT DATA
 // ══════════════════════════════════════════════════════
-const COLORS=['#6376DA','#E88B6D','#6DB8E8','#9B6DE8','#50C08A','#E8CC5A','#E86D8B','#5AC8E8']
+const COLORS=['#5B7CC2','#C98A6B','#5FA8C7','#8E7BC4','#5CB089','#C2A85C','#C47B97','#5FB3C2']
 function mkProject(name){return{id:uid(),name,status:'active',summary:'',startDate:'',endDate:'',tasks:[],notes:[],links:[],meetings:[],travel:[]}}
 function mkBrand(name,projects=[]){return{id:uid(),name,projects}}
 function mkMember(name,color,brands=[],isMe=false){return{id:uid(),name,color,brands,isMe}}
 
 const DEFAULT={
-  version:'2.0',showArchived:false,scratchpad:'',quickLinks:[],
+  version:'2.0',showArchived:false,scratchpad:'',quickLinks:[],savedViews:[],
   members:[
     mkMember('Me',COLORS[0],[mkBrand('My Projects',[])],true),
     mkMember('Pierre',COLORS[1],[mkBrand('Cole Haan',[mkProject('Cole Haan Spring 2027')]),mkBrand('Haggar',[]),mkBrand('Dockers',[])]),
@@ -64,6 +64,7 @@ function migrate(d){
   // Top-level fields
   if(!('scratchpad'in d))d.scratchpad=''
   if(!('quickLinks'in d))d.quickLinks=[]
+  if(!('savedViews'in d))d.savedViews=[]
   for(const m of d.members||[])for(const b of m.brands||[])for(const p of b.projects||[]){
     // Project-level fields
     if(!('summary'  in p))p.summary=''
@@ -226,6 +227,7 @@ function save() {
 
 let selId=null          // selected project id
 let viewMode='home' // 'home' (team board landing) | 'worklist' | 'detail' | 'calendar' | 'sync' | 'allcal' | 'globaltasks' | 'today'
+let homeView='today' // 'today' (bento Home) | 'board' (team kanban)
 let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
@@ -446,7 +448,7 @@ function renderSidebar(){
   // Scope chips (work list entry points)
   const countToday=countTasksForScope('today'), countOverdue=countTasksForScope('overdue'), countWeek=countTasksForScope('thisweek'), countAll=countTasksForScope('all')
   const scopeOn=t=>viewMode==='worklist' && viewScope.type===t && !viewScope.id
-  h+=`<div class="sb-lbl">Work</div>
+  h+=`<div class="sb-lbl sb-lbl-row"><span>Work</span><button class="sb-lbl-add" onclick="saveCurrentView()" title="Save the current list as a view">＋</button></div>
     <div class="sb-scopes">
       <button class="sb-scope-btn ${scopeOn('today')?'on':''}" onclick="setScope('today')">
         <span class="sb-scope-ico">📆</span><span class="sb-scope-lbl">Today</span>${countToday?`<span class="sb-scope-ct">${countToday}</span>`:''}
@@ -461,6 +463,18 @@ function renderSidebar(){
         <span class="sb-scope-ico">∞</span><span class="sb-scope-lbl">All Open</span>${countAll?`<span class="sb-scope-ct">${countAll}</span>`:''}
       </button>
     </div>`
+
+  // Saved views (pinned scopes)
+  if((state.savedViews||[]).length){
+    h+=`<div class="sb-saved">`
+    state.savedViews.forEach(v=>{
+      h+=`<button class="sb-saved-btn" onclick="applySavedView('${v.id}')" title="${esc(v.name)}">
+        <span class="sb-saved-ico">◆</span><span class="sb-saved-lbl">${esc(v.name)}</span>
+        <span class="sb-saved-del" onclick="deleteSavedView('${v.id}');event.stopPropagation()" title="Remove view">✕</span>
+      </button>`
+    })
+    h+=`</div>`
+  }
 
   // Expand / collapse all controls for the project tree
   h+=`<div class="sb-tree-controls">
@@ -516,7 +530,7 @@ function renderMember(m){
         ondragover="sbDragOver(event,'project')"
         ondrop="sbDrop(event,'project','${p.id}','${b.id}')"
         onclick="goProject('${p.id}')">
-        <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
+        <div class="p-pip" style="background:${projStatus(p).color};opacity:1" title="${esc(projStatus(p).label)}"></div><span class="p-lbl">${esc(p.name)}</span>
         ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
         <div class="sb-proj-actions">
           <button class="sb-act-btn" title="Rename project" onclick="openModal('editProject','${p.id}');event.stopPropagation()">✏</button>
@@ -577,7 +591,7 @@ function renderBrand(b,memberId){
       ondragover="sbDragOver(event,'project')"
       ondrop="sbDrop(event,'project','${p.id}','${b.id}')"
       onclick="goProject('${p.id}')">
-      <div class="p-pip"></div><span class="p-lbl">${esc(p.name)}</span>
+      <div class="p-pip" style="background:${projStatus(p).color};opacity:1" title="${esc(projStatus(p).label)}"></div><span class="p-lbl">${esc(p.name)}</span>
       ${p.status==='archived'?'<span class="p-arch-ico">📦</span>':''}
       <div class="sb-proj-actions">
         <button class="sb-act-btn" title="Rename project" onclick="openModal('editProject','${p.id}');event.stopPropagation()">✏</button>
@@ -642,10 +656,14 @@ function renderMain(){
   // behind it and refresh the sheet contents.
   if(!found||viewMode==='home'||projectSheetOpen){
     vt.style.display='none'
-    bc.innerHTML=`<span class="bc-cur">Team Board</span>`
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="setScope('today')" title="Today's Focus">📆 Today</button>
+    const onBoard=homeView==='board'
+    bc.innerHTML=`<span class="bc-cur">${onBoard?'Team Board':'Home'}</span>`
+    acts.innerHTML=`<div class="view-toggle home-toggle">
+        <button class="vt-btn ${!onBoard?'active':''}" onclick="setHomeView('today')">◧ Home</button>
+        <button class="vt-btn ${onBoard?'active':''}" onclick="setHomeView('board')">▦ Board</button>
+      </div>
       <button class="btn btn-ghost btn-sm" onclick="showView('allcal')" title="All Teams Calendar">📅 Calendar</button>`
-    content.innerHTML=renderTeamBoard()
+    content.innerHTML=onBoard?renderTeamBoard():renderDashboard()
     if(projectSheetOpen)renderProjectModal()
     return
   }
@@ -953,6 +971,23 @@ function setWlGroup(v){wlGroupBy=v;renderMain()}
 function setWlSort(v){wlSortBy=v;renderMain()}
 function setWlShowDone(v){wlShowDone=v;renderMain()}
 function setWlRowCap(n){wlRowCap=n;renderMain()}
+function saveCurrentView(){
+  const vs=viewScope||{type:'today'}
+  showPromptModal('Name this view','e.g. My overdue',(name)=>{
+    if(!name||!name.trim())return
+    if(!state.savedViews)state.savedViews=[]
+    state.savedViews.push({id:uid(),name:name.trim(),type:vs.type,vid:vs.id||''})
+    save();renderSidebar()
+  })
+}
+function applySavedView(id){
+  const v=(state.savedViews||[]).find(x=>x.id===id);if(!v)return
+  setScope(v.type,v.vid||undefined)
+}
+function deleteSavedView(id){
+  state.savedViews=(state.savedViews||[]).filter(x=>x.id!==id)
+  save();renderSidebar()
+}
 
 // ── MULTI-SELECT / BULK ACTIONS ──────────────────────────
 function toggleTaskSelect(pid,tid){
@@ -1252,6 +1287,7 @@ function setProjectTab(tab){
 // ══════════════════════════════════════════════════════
 function renderDetail(p,m,b){
   const isArch=p.status==='archived'
+  const sl=projStatusLine(p)
   const completed=p.tasks.filter(t=>t.progress==='completed')
   const inProg=p.tasks.filter(t=>t.progress==='in-progress')
   const notStarted=p.tasks.filter(t=>t.progress==='not-started')
@@ -1372,6 +1408,12 @@ function renderDetail(p,m,b){
         <span class="badge badge-${p.status}">${p.status}</span>
         <span class="mtag"><span class="mtag-dot" style="background:${m.color}"></span>${esc(m.name)} · ${esc(b.name)}</span>
         ${!isArch?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="duplicateProject('${p.id}')" title="Duplicate this project as a template">⧉ Duplicate</button>`:''}
+      </div>
+      <div class="proj-status-line" title="Auto-generated from this project's tasks and dates — no upkeep needed">
+        <span class="proj-status-dot" style="background:${sl.color}"></span>
+        <span class="proj-status-key">${sl.label}</span>
+        <span class="proj-status-sep">·</span>
+        <span class="proj-status-detail">${esc(sl.detail)}</span>
       </div>
       ${datesRow}
     </div>
@@ -2971,6 +3013,8 @@ function goProject(id){
   const f=findProject(id)
   if(f){openMembers.add(f.m.id);openBrands.add(f.b.id)}
   closeMobileSidebar()
+  renderSidebar()
+  setTimeout(()=>{const ar=document.querySelector('.proj-row.active');if(ar)ar.scrollIntoView({block:'nearest'})},0)
   openProjectModal()
 }
 
@@ -2998,11 +3042,17 @@ function closeProjectModal(){
 }
 
 function _onProjSheetKey(e){
+  const modalOv=document.getElementById('modalOv')
+  const modalOpen=modalOv&&modalOv.style.display==='flex'
   if(e.key==='Escape'){
-    // Don't intercept Escape if a deeper modal is open on top.
-    const modalOv=document.getElementById('modalOv')
-    if(modalOv&&modalOv.style.display==='flex')return
-    closeProjectModal()
+    if(modalOpen)return
+    closeProjectModal();return
+  }
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!modalOpen){
+    const t=e.target,tag=(t&&t.tagName)||''
+    if(/INPUT|TEXTAREA|SELECT/.test(tag)||(t&&t.isContentEditable))return
+    e.preventDefault()
+    projSheetNav(e.key==='ArrowLeft'?-1:1)
   }
 }
 
@@ -3025,6 +3075,10 @@ function renderProjectModal(){
     : `<button class="btn btn-ghost btn-sm" onclick="archiveProject()">Archive</button>`
 
   head.innerHTML=`
+    <div class="proj-sheet-nav-group">
+      <button class="proj-sheet-nav" onclick="projSheetNav(-1)" title="Previous project (←)" aria-label="Previous project">‹</button>
+      <button class="proj-sheet-nav" onclick="projSheetNav(1)" title="Next project (→)" aria-label="Next project">›</button>
+    </div>
     <div class="proj-sheet-bc">
       <div class="proj-sheet-bc-sub">${esc(m.name)} · ${esc(b.name)}</div>
       <h2 class="proj-sheet-title" id="projSheetTitle">${esc(p.name)}</h2>
@@ -3036,6 +3090,7 @@ function renderProjectModal(){
       </div>
       <button class="btn btn-ghost btn-sm" onclick="openModal('editProject','${p.id}')">✏ Rename</button>
       ${archBtn}
+      <span class="proj-sheet-kbd" title="← → move between projects · Esc to close">‹ ›&nbsp;&nbsp;esc</span>
       <button class="proj-sheet-close" onclick="closeProjectModal()" title="Close (Esc)" aria-label="Close">✕</button>
     </div>
   `
@@ -3055,6 +3110,98 @@ function goHome(){
   viewMode='home'
   closeMobileSidebar()
   render()
+}
+function setHomeView(v){homeView=v;renderMain()}
+
+// ══════════════════════════════════════════════════════
+//  BENTO HOME / TODAY DASHBOARD
+// ══════════════════════════════════════════════════════
+function renderDashboard(){
+  const today=todayIso()
+  const now=new Date()
+  const hr=now.getHours()
+  const greeting=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening'
+  const me=state.members.find(m=>m.isMe)
+  const myName=me?esc(me.name):'there'
+  const dateStr=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})
+
+  const projs=[]
+  state.members.forEach(m=>m.brands.forEach(b=>b.projects.forEach(p=>{if(p.status!=='archived')projs.push({p,b,m})})))
+  const tasks=[]
+  projs.forEach(({p,b,m})=>(p.tasks||[]).forEach(t=>tasks.push({t,p,b,m})))
+  const open=tasks.filter(x=>(x.t.progress||'')!=='completed')
+  const dueToday=open.filter(x=>x.t.dueDate===today)
+  const overdue=open.filter(x=>x.t.dueDate&&x.t.dueDate<today).sort((a,b)=>a.t.dueDate.localeCompare(b.t.dueDate))
+  const wk=new Date(now);wk.setDate(wk.getDate()+7);const wkIso=wk.toISOString().slice(0,10)
+  const dueWeek=open.filter(x=>x.t.dueDate&&x.t.dueDate>=today&&x.t.dueDate<=wkIso).sort((a,b)=>a.t.dueDate.localeCompare(b.t.dueDate))
+  const atRisk=projs.filter(({p})=>projStatus(p).key==='risk')
+  const emptyProjs=projs.filter(({p})=>!(p.tasks||[]).length)
+  const doneCount=tasks.filter(x=>(x.t.progress||'')==='completed').length
+
+  const team=state.members.map(m=>{
+    let o=0,od=0
+    m.brands.forEach(b=>b.projects.forEach(p=>{if(p.status==='archived')return;(p.tasks||[]).forEach(t=>{if((t.progress||'')!=='completed'){o++;if(t.dueDate&&t.dueDate<today)od++}})}))
+    return {m,open:o,od}
+  })
+  const maxLoad=Math.max(1,...team.map(x=>x.open))
+
+  const taskRow=(x)=>`<button class="bento-row" onclick="goTask('${x.p.id}','${x.t.id}')" title="${esc(x.t.text)}">
+    <span class="bento-row-dot" style="background:${projStatus(x.p).color}"></span>
+    <span class="bento-row-main">${esc(x.t.text)}</span>
+    <span class="bento-row-sub">${esc(x.p.name)}</span>
+  </button>`
+  const dueRow=(x)=>`<button class="bento-row" onclick="goTask('${x.p.id}','${x.t.id}')" title="${esc(x.t.text)}">
+    <span class="bento-row-dot" style="background:${x.t.dueDate<today?'var(--red)':'var(--warn)'}"></span>
+    <span class="bento-row-main">${esc(x.t.text)}</span>
+    <span class="bento-row-sub">${esc(friendly(x.t.dueDate))}</span>
+  </button>`
+
+  return `<div class="dash2">
+    <div class="dash2-head">
+      <div>
+        <div class="dash2-greet">${greeting}, ${myName}</div>
+        <div class="dash2-date">${esc(dateStr)}</div>
+      </div>
+      <div class="dash2-head-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openCmdBar()" title="Quick add (Cmd+K)">⌘K Quick add</button>
+        <button class="btn btn-ghost btn-sm" onclick="setHomeView('board')">▦ Team Board</button>
+      </div>
+    </div>
+    ${(overdue.length>=3||dueWeek.length>=8||emptyProjs.length)?`<div class="dash2-nudges">
+      ${overdue.length>=3?`<button class="dash2-nudge" onclick="setScope('overdue')"><span class="dash2-nudge-ico">⚠</span>${overdue.length} tasks overdue — review now</button>`:''}
+      ${dueWeek.length>=8?`<button class="dash2-nudge" onclick="setScope('thisweek')"><span class="dash2-nudge-ico">📅</span>Heavy week ahead: ${dueWeek.length} due in 7 days</button>`:''}
+      ${emptyProjs.length?`<button class="dash2-nudge" onclick="goProject('${emptyProjs[0].p.id}')"><span class="dash2-nudge-ico">✦</span>${emptyProjs.length} project${emptyProjs.length>1?'s have':' has'} no tasks — plan ${emptyProjs.length>1?'them':'it'}</button>`:''}
+    </div>`:''}
+    <div class="bento">
+      <div class="bento-tile span4">
+        <div class="bento-tile-head"><span class="bento-tile-ttl">Due today</span><span class="bento-pill">${dueToday.length}</span></div>
+        ${dueToday.length?dueToday.slice(0,6).map(taskRow).join(''):'<div class="bento-empty">Nothing due today. ✦</div>'}
+      </div>
+      <div class="bento-tile span4">
+        <div class="bento-tile-head"><span class="bento-tile-ttl">Overdue</span><span class="bento-pill ${overdue.length?'danger':''}">${overdue.length}</span></div>
+        ${overdue.length?overdue.slice(0,6).map(dueRow).join(''):'<div class="bento-empty">All caught up. ✓</div>'}
+      </div>
+      <div class="bento-tile span4">
+        <div class="bento-tile-head"><span class="bento-tile-ttl">At-risk projects</span><span class="bento-pill ${atRisk.length?'danger':''}">${atRisk.length}</span></div>
+        ${atRisk.length?atRisk.slice(0,6).map(({p,m})=>`<button class="bento-row" onclick="goProject('${p.id}')" title="${esc(p.name)}"><span class="bento-row-dot" style="background:var(--red)"></span><span class="bento-row-main">${esc(p.name)}</span><span class="bento-row-sub">${esc(m.name)}</span></button>`).join(''):'<div class="bento-empty">No projects at risk.</div>'}
+      </div>
+      <div class="bento-tile span8">
+        <div class="bento-tile-head"><span class="bento-tile-ttl">Team load</span><span class="bento-sub2">${open.length} open · ${overdue.length} overdue</span></div>
+        <div class="bento-load">
+          ${team.map(({m,open:o,od})=>`<div class="bento-load-row" onclick="setScope('member','${m.id}')" title="${esc(m.name)} — ${o} open${od?`, ${od} overdue`:''}"><span class="bento-load-name"><span class="m-dot" style="background:${m.color}"></span>${esc(m.name)}</span><span class="bento-load-bar"><span class="bento-load-fill" style="width:${Math.round(o/maxLoad*100)}%;background:${od?'var(--red)':'var(--ok)'}"></span></span><span class="bento-load-num">${o}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="bento-tile span4">
+        <div class="bento-tile-head"><span class="bento-tile-ttl">This week</span><span class="bento-pill">${dueWeek.length}</span></div>
+        ${dueWeek.length?dueWeek.slice(0,4).map(dueRow).join(''):'<div class="bento-empty">Clear week ahead.</div>'}
+        <div class="bento-stats">
+          <div class="bento-stat"><b>${projs.length}</b><span>projects</span></div>
+          <div class="bento-stat"><b>${open.length}</b><span>open</span></div>
+          <div class="bento-stat"><b>${doneCount}</b><span>done</span></div>
+        </div>
+      </div>
+    </div>
+  </div>`
 }
 
 // ══════════════════════════════════════════════════════
@@ -3084,6 +3231,9 @@ function renderTeamBoardColumn(m,today,showArchived){
   const totalProjects=visibleBrands.reduce((a,x)=>a+x.projects.length,0)
   const totalOpenTasks=visibleBrands.reduce((a,x)=>a+x.projects.reduce((b,p)=>
     b+(p.tasks||[]).filter(t=>(t.progress||'')!=='completed').length,0),0)
+  const totalOverdue=visibleBrands.reduce((a,x)=>a+x.projects.reduce((b,p)=>
+    b+(p.tasks||[]).filter(t=>(t.progress||'')!=='completed'&&t.dueDate&&t.dueDate<today).length,0),0)
+  const loadPct=Math.min(100,Math.round(totalOpenTasks/12*100))
 
   return `<div class="tb-col" data-mid="${esc(m.id)}"
     ondragover="tbColDragOver(event,'${esc(m.id)}')"
@@ -3098,6 +3248,7 @@ function renderTeamBoardColumn(m,today,showArchived){
       <span class="tb-col-name">${esc(m.name)}</span>
       <span class="tb-col-count" title="${totalProjects} project${totalProjects===1?'':'s'} · ${totalOpenTasks} open task${totalOpenTasks===1?'':'s'}">${totalProjects}</span>
     </div>
+    ${totalOpenTasks?`<div class="tb-col-load" title="${totalOpenTasks} open task${totalOpenTasks===1?'':'s'}${totalOverdue?` · ${totalOverdue} overdue`:''}"><span class="tb-col-load-fill" style="width:${loadPct}%;background:${totalOverdue?'var(--red)':'var(--ok)'}"></span></div>`:''}
     <div class="tb-col-body">
       <button class="tb-add-btn" onclick="event.stopPropagation();tbAddProject('${esc(m.id)}')" title="Add a project to ${esc(m.name)}'s board">
         <span class="tb-add-ico">＋</span><span>Add project</span>
@@ -3126,6 +3277,51 @@ function renderTeamBoardBrandSection(m,b,projects,today){
   </div>`
 }
 
+function projStatus(p){
+  if(!p)return{key:'idle',label:'No status',color:'var(--tm)'}
+  if(p.status==='archived')return{key:'archived',label:'Archived',color:'var(--tm)'}
+  const tasks=p.tasks||[]
+  if(!tasks.length)return{key:'idle',label:'No tasks yet',color:'var(--tm)'}
+  const open=tasks.filter(t=>(t.progress||'')!=='completed')
+  if(!open.length)return{key:'done',label:'Complete',color:'var(--ok)'}
+  const today=todayIso()
+  const overdue=open.filter(t=>t.dueDate&&t.dueDate<today)
+  if(overdue.length)return{key:'risk',label:`At risk · ${overdue.length} overdue`,color:'var(--red)'}
+  const soon=open.filter(t=>t.dueDate&&t.dueDate>=today&&(new Date(t.dueDate)-new Date(today))/864e5<=3)
+  if(soon.length)return{key:'soon',label:'Due soon',color:'var(--warn)'}
+  return{key:'track',label:'On track',color:'var(--ok)'}
+}
+function projStatusLine(p){
+  const st=projStatus(p)
+  const labelMap={track:'On track',risk:'At risk',soon:'Due soon',done:'Complete',idle:'No tasks yet',archived:'Archived'}
+  const tasks=p.tasks||[]
+  const total=tasks.length
+  const done=tasks.filter(t=>(t.progress||'')==='completed').length
+  const today=todayIso()
+  const openT=tasks.filter(t=>(t.progress||'')!=='completed')
+  const overdue=openT.filter(t=>t.dueDate&&t.dueDate<today).length
+  const nextDue=openT.filter(t=>t.dueDate).map(t=>t.dueDate).sort()[0]
+  const parts=[]
+  if(total)parts.push(`${done}/${total} tasks done`)
+  if(overdue)parts.push(`${overdue} overdue`)
+  if(nextDue)parts.push(`next due ${friendly(nextDue)}`)
+  return {color:st.color,label:labelMap[st.key]||'Status',detail:parts.join(' · ')||'No tasks yet'}
+}
+function allProjectIdsInOrder(){
+  const ids=[]
+  for(const m of state.members||[])for(const b of m.brands||[])for(const p of b.projects||[]){
+    if(state.showArchived||p.status!=='archived')ids.push(p.id)
+  }
+  return ids
+}
+function projSheetNav(dir){
+  const ids=allProjectIdsInOrder()
+  const i=ids.indexOf(selId)
+  if(i<0)return
+  const ni=i+dir
+  if(ni<0||ni>=ids.length)return
+  goProject(ids[ni])
+}
 function renderTeamBoardCard(p,m,b,today){
   const tasks=p.tasks||[]
   const total=tasks.length
@@ -3139,6 +3335,7 @@ function renderTeamBoardCard(p,m,b,today){
     .sort()[0] || ''
   const isOverdue=nextDue && nextDue<today
   const isArch=p.status==='archived'
+  const st=projStatus(p)
 
   return `<div class="tb-card${isArch?' tb-arch':''}${isOverdue?' tb-card-has-overdue':''}"
     data-mid="${esc(m.id)}" data-bid="${esc(b.id)}" data-pid="${esc(p.id)}"
@@ -3150,7 +3347,7 @@ function renderTeamBoardCard(p,m,b,today){
     ondragleave="tbCardDragLeave(event)"
     ondrop="tbCardDrop(event,'${esc(m.id)}','${esc(b.id)}','${esc(p.id)}')"
     title="Open ${esc(p.name)} · drag to reorder">
-    <div class="tb-card-name">${esc(p.name)}</div>
+    <div class="tb-card-titlerow"><span class="tb-status-dot" style="background:${st.color}" title="${esc(st.label)}"></span><span class="tb-card-name">${esc(p.name)}</span></div>
     <div class="tb-card-meta">
       ${total?`<span class="tb-card-tasks" title="${done} of ${total} tasks complete">✓ ${done}/${total}</span>`:'<span class="tb-card-tasks tb-empty">No tasks</span>'}
       ${overdueCount?`<span class="tb-card-overdue" title="${overdueCount} overdue task${overdueCount===1?'':'s'}">⚠ ${overdueCount} overdue</span>`:''}
