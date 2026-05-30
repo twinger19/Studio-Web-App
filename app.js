@@ -1328,26 +1328,17 @@ function renderDetail(p,m,b){
 
   const tasksPanel=`<div class="tab-panel">
     <div class="tab-panel-toolbar">
-      <div class="tab-panel-meta">${notStarted.length} not started · ${inProg.length} in progress${completed.length?` · ${completed.length} done`:''}</div>
+      <div class="tab-panel-meta">${notStarted.length+inProg.length} open${completed.length?` · ${completed.length} done`:''}</div>
       <button class="sort-toggle-btn${sortByDue?' on':''}" onclick="toggleSortByDue()" title="Sort tasks by due date">📅 ${sortByDue?'Date ↑':'Sort by date'}</button>
     </div>
     ${!isArch?`<div class="task-template-row">
-      <div class="task-template-copy">Use your standard product development workflow as a starting point, then plug in project-specific dates after the tasks are created.</div>
+      <div class="task-template-copy">Auto-creates the standard line — Line Plan Due, CAD Review, Samples Due, Midpoint Review, Final Samples Due &amp; Line Final — each dated and prefixed with the project name. CAD Review, Midpoint &amp; Line Final are added as meetings, so they show under the calendar's review filters. Adjust the dates afterward.</div>
       <button class="btn btn-ghost btn-sm" onclick="generateProductDevelopmentTasks()">Generate Product Development Tasks</button>
     </div>`:''}
     <div id="taskList">${sortedTaskList(shown).map(t=>taskHTML(t)).join('')||'<div class="tab-empty">No open tasks. Add one below or press ⌘K.</div>'}</div>
     ${completed.length?`<button class="done-toggle" onclick="toggleDone()">${showDone?'▾ Hide completed':`▸ Show ${completed.length} completed`}</button>`:''}
     ${!isArch?`<div class="add-task-row">
       <input class="add-task-inp" id="newTText" placeholder="Add a task…" onkeydown="if(event.key==='Enter')doAddTask()">
-      <select class="prio-sel" id="newTPrio" title="Priority">
-        <option value="">– Priority</option>
-        <option value="urgent">🔴 Urgent</option>
-        <option value="high">🟠 High</option>
-        <option value="medium">🔵 Medium</option>
-        <option value="low">⚪ Low</option>
-      </select>
-      <input type="date" class="add-date-inp" id="newTStart" title="Start date (optional)">
-      <span style="font-size:11px;color:var(--tm);opacity:.5">→</span>
       <input type="date" class="add-date-inp" id="newTDue" title="Due date">
       <button class="btn btn-primary btn-sm" onclick="doAddTask()">Add</button>
     </div>`:''}
@@ -1436,7 +1427,6 @@ function renderDetail(p,m,b){
 function taskHTML(t){
   const td=todayIso()
   const prog=t.progress||'not-started'
-  const prio=t.priority||''
   let dc=''
   if(t.dueDate&&prog!=='completed'){
     if(t.dueDate<td)dc='date-over'
@@ -1454,37 +1444,10 @@ function taskHTML(t){
     <div class="task-body">
       <textarea class="task-txt ${txtClass}" rows="1"
         onblur="updateTaskTxt('${t.id}',this.value)" oninput="autoGrow(this)">${esc(t.text)}</textarea>
-      <div class="task-meta-chips">
-        ${t.dueDate?`<span class="tmeta-due${dc?' '+dc:''}">${esc(friendly(t.dueDate))}</span>`:''}
-        ${prio?`<span class="tmeta-prio prio-${prio}">${prio.charAt(0).toUpperCase()+prio.slice(1)}</span>`:''}
-        ${t.assignee?`<span class="tmeta-assignee">${esc(state.members.find(mx=>mx.id===t.assignee)?.name||'')}</span>`:''}
-      </div>
       <div class="task-dates">
-        <div class="task-date-field">
-          <span class="date-lbl">Start</span>
-          <input type="date" class="date-inp" value="${t.startDate||''}" title="Start date" onchange="updateTaskStart('${t.id}',this.value)">
-        </div>
         <div class="task-date-field">
           <span class="date-lbl">Due</span>
           <input type="date" class="date-inp ${dc}" value="${t.dueDate||''}" title="Due date" onchange="updateTaskDue('${t.id}',this.value)">
-        </div>
-        <div class="prog-wrap">
-          <select class="prog-sel prog-${prog}" onchange="updateTaskProgress('${t.id}',this.value)">
-            <option value="not-started" ${prog==='not-started'?'selected':''}>Not Started</option>
-            <option value="in-progress" ${prog==='in-progress'?'selected':''}>In Progress</option>
-            <option value="completed" ${prog==='completed'?'selected':''}>Completed</option>
-          </select>
-          <select class="prio-sel ${prio?'prio-'+prio:''}" onchange="updateTaskPriority('${t.id}',this.value)" title="Priority">
-            <option value="" ${!prio?'selected':''}>– Priority</option>
-            <option value="urgent" ${prio==='urgent'?'selected':''}>🔴 Urgent</option>
-            <option value="high" ${prio==='high'?'selected':''}>🟠 High</option>
-            <option value="medium" ${prio==='medium'?'selected':''}>🔵 Medium</option>
-            <option value="low" ${prio==='low'?'selected':''}>⚪ Low</option>
-          </select>
-          <select class="task-assignee-sel" onchange="updateTaskAssignee('${t.id}',this.value)" title="Assignee">
-            <option value="" ${!t.assignee?'selected':''}>Assign…</option>
-            ${state.members.map(mx=>`<option value="${mx.id}" ${t.assignee===mx.id?'selected':''}>${esc(mx.name)}</option>`).join('')}
-          </select>
         </div>
       </div>
       <div class="task-micronote" id="tmn_${t.id}" style="display:${hasNote?'block':'none'}">
@@ -1697,6 +1660,7 @@ function isKeyTask(t){
   const u=taskUrgency(t)
   if(u.key==='overdue'||u.key==='soon')return true
   if(t.priority==='urgent'||t.priority==='high')return true
+  if(t.milestone)return true
   if(t.startDate&&t.dueDate&&t.startDate<t.dueDate)return true
   return false
 }
@@ -3822,29 +3786,54 @@ function unarchive(){const f=sel();if(!f)return;f.p.status='active';save();rende
 // ══════════════════════════════════════════════════════
 function doAddTask(){
   const txt=document.getElementById('newTText')?.value.trim();if(!txt)return
-  const start=document.getElementById('newTStart')?.value||''
   const due=document.getElementById('newTDue')?.value||''
   const f=sel();if(!f)return
-  const prio=document.getElementById('newTPrio')?.value||''
-  f.p.tasks.push({id:uid(),text:txt,startDate:start,dueDate:due,done:false,progress:'not-started',priority:prio})
+  // Assignee auto-binds to whoever the project sits under — no dropdown needed.
+  f.p.tasks.push({id:uid(),text:txt,dueDate:due,done:false,progress:'not-started',assignee:f.m.id,note:''})
   save();renderMain()
   setTimeout(()=>{const el=document.getElementById('newTText');if(el)el.focus()},30)
 }
 
 function generateProductDevelopmentTasks(){
   const f=sel();if(!f)return
-  const existing=new Set(f.p.tasks.map(t=>String(t.text||'').trim().toLowerCase()).filter(Boolean))
-  const toAdd=PRODUCT_DEVELOPMENT_TEMPLATE.filter(name=>!existing.has(name.toLowerCase()))
-  if(!toAdd.length){
-    showNotice('All product development tasks are already in this project.')
-    return
-  }
-  toAdd.forEach(text=>{
-    f.p.tasks.push({id:uid(),text,startDate:'',dueDate:'',done:false,progress:'not-started'})
+  const {p,m}=f
+  if(!p.meetings)p.meetings=[]
+  // Space the standard line out from the project start (or today) — user adjusts after.
+  const base=p.startDate||todayIso()
+  const isoAt=(days)=>{const d=new Date(base+'T00:00:00');d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
+  const existingTasks=new Set((p.tasks||[]).map(t=>String(t.text||'').trim().toLowerCase()))
+  const existingMeets=new Set((p.meetings||[]).map(mt=>String(mt.title||'').trim().toLowerCase()))
+
+  // Plain deadlines → tasks. Review milestones → meetings (kind links them to the calendar filters).
+  const taskPlan=[
+    {label:'Line Plan Due',off:14},
+    {label:'Samples Due',off:55},
+    {label:'Final Samples Due',off:95}
+  ]
+  const meetPlan=[
+    {label:'CAD Review',off:30,kind:'cad-review'},
+    {label:'Midpoint Review',off:70,kind:'midpoint-review'},
+    {label:'Line Final',off:115,kind:'line-final'}
+  ]
+
+  let added=0
+  taskPlan.forEach(it=>{
+    const text=`${p.name} ${it.label}`
+    if(existingTasks.has(text.toLowerCase()))return
+    p.tasks.push({id:uid(),text,dueDate:isoAt(it.off),done:false,progress:'not-started',assignee:m.id,note:'',milestone:true})
+    added++
   })
+  meetPlan.forEach(it=>{
+    const title=`${p.name} ${it.label}`
+    if(existingMeets.has(title.toLowerCase()))return
+    p.meetings.push({id:uid(),title,date:isoAt(it.off),kind:it.kind})
+    added++
+  })
+
+  if(!added){showNotice('Those product development items are already in this project.');return}
   save()
   renderMain()
-  showNotice(`Added ${toAdd.length} product development task${toAdd.length===1?'':'s'}.`)
+  showNotice(`Added ${added} item${added===1?'':'s'} — dated tasks plus CAD / Midpoint / Line Final review meetings.`)
 }
 
 function toggleTask(tid,checked){
