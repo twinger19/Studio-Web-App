@@ -232,6 +232,8 @@ let _drag=null          // {type,id,parentId} for sidebar drag-reorder
 let calMode='month'     // 'month'|'6month'
 let calDate=new Date()  // current calendar month reference
 let calFilter='all'     // 'all'|'tasks'|'meetings'|'cad-review'|'midpoint-review'|'line-final'
+let calKeyOnly=true     // show only the most important dates (overdue, due-soon, priority, ranges)
+let calShowDone=false   // include completed tasks on the calendar
 let calOwnerFilter='all'
 let showDone=false
 let sortByDue=false     // sort tasks by due date
@@ -1663,6 +1665,8 @@ const PRODUCT_DEVELOPMENT_TEMPLATE=[
 ]
 
 function setCalFilter(f){calFilter=f;renderMain()}
+function setCalKeyOnly(){calKeyOnly=!calKeyOnly;renderMain()}
+function setCalShowDone(){calShowDone=!calShowDone;renderMain()}
 // Returns true when the active filter is one of the specific meeting-type filters
 function isMeetingTypeFilter(){return calFilter==='cad-review'||calFilter==='midpoint-review'||calFilter==='line-final'}
 // Returns true when a meeting object should be visible under the current filter
@@ -1675,6 +1679,65 @@ function calendarRangeTitle(baseDate,count){
   const start=new Date(baseDate.getFullYear(),baseDate.getMonth(),1)
   const end=new Date(baseDate.getFullYear(),baseDate.getMonth()+count-1,1)
   return `${MONTHS[start.getMonth()]} ${start.getFullYear()} - ${MONTHS[end.getMonth()]} ${end.getFullYear()}`
+}
+// ── Calendar urgency model — color-codes tasks by deadline pressure ──
+function taskUrgency(t){
+  const today=todayIso()
+  const prog=t.progress||'not-started'
+  if(prog==='completed')return{key:'done',color:'var(--ok)',soft:'var(--ok-l)',rank:4}
+  if(t.dueDate&&t.dueDate<today)return{key:'overdue',color:'var(--red)',soft:'var(--red-l)',rank:0}
+  if(t.dueDate){
+    const diff=(new Date(t.dueDate+'T00:00:00')-new Date(today+'T00:00:00'))/864e5
+    if(diff<=3)return{key:'soon',color:'var(--warn)',soft:'var(--warn-l)',rank:1}
+  }
+  return{key:'upcoming',color:'var(--acc)',soft:'var(--acc-l)',rank:2}
+}
+// A task is a "key date" if it's pressing, prioritized, or a defined work period.
+function isKeyTask(t){
+  const u=taskUrgency(t)
+  if(u.key==='overdue'||u.key==='soon')return true
+  if(t.priority==='urgent'||t.priority==='high')return true
+  if(t.startDate&&t.dueDate&&t.startDate<t.dueDate)return true
+  return false
+}
+function calTaskVisible(t){
+  const prog=t.progress||'not-started'
+  if(prog==='completed'&&!calShowDone)return false
+  if(calKeyOnly&&prog!=='completed'&&!isKeyTask(t))return false
+  return true
+}
+// Add a task to a date→items map as either a connected span (start..due) or a single deadline point.
+function addTaskCalSegments(map,t,extra){
+  if(!t.dueDate)return
+  if(!calTaskVisible(t))return
+  const u=taskUrgency(t)
+  const base={t,color:u.color,soft:u.soft,ukey:u.key,rank:u.rank,...(extra||{})}
+  if(t.startDate&&t.startDate<t.dueDate){
+    eachIsoDay(t.startDate,t.dueDate,(iso)=>{
+      const segment=iso===t.startDate?'start':iso===t.dueDate?'end':'mid'
+      ;(map[iso]=map[iso]||[]).push({kind:'task-span',segment,deadline:iso===t.dueDate,...base})
+    })
+  }else{
+    ;(map[t.dueDate]=map[t.dueDate]||[]).push({kind:'task-point',...base})
+  }
+}
+function taskChipHTML(item,projId,label){
+  const style=`--c:${item.color};--cs:${item.soft}`
+  if(item.kind==='task-span'){
+    const seg=item.segment
+    return `<div class="cal-chip cal-task-span seg-${seg}${item.deadline?' is-deadline':''}" style="${style}" title="${esc(label||'')}" onclick="event.stopPropagation();goProject('${projId}')">${item.deadline?'◆ ':''}${seg==='start'?esc((item.t.text||'').slice(0,16)):''}</div>`
+  }
+  return `<div class="cal-chip cal-task-point" style="${style}" title="${esc(label||'')}" onclick="event.stopPropagation();goProject('${projId}')"><span class="cal-pt-dot"></span>${esc((item.t.text||'').slice(0,16))}</div>`
+}
+function calUrgencyLegend(){
+  return `<div class="cal-legend">
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--red)"></span>Overdue</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--warn)"></span>Due soon</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--acc)"></span>Upcoming</span>
+    <span class="cal-legend-item"><span class="cal-legend-dot" style="background:#9B6DE8"></span>Meeting</span>
+    <span class="cal-legend-item"><span class="cal-legend-bar" style="background:var(--ok)"></span>Project range</span>
+    <span class="cal-legend-item"><span class="cal-legend-bar soft"></span>Work span → ◆ deadline</span>
+  </div>`
 }
 function renderCalendarNav(title){
   return `<div class="cal-nav">
@@ -1691,23 +1754,26 @@ function renderCalendarControls(opts={}){
       <option value="all" ${calOwnerFilter==='all'?'selected':''}>All People</option>
       ${state.members.map(m=>`<option value="${m.id}" ${calOwnerFilter===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}
     </select>`:''
-  return `<div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+  return `<div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
     <div class="view-toggle">
       <button class="vt-btn ${calMode==='month'?'active':''}" onclick="setCalMode('month')">Month</button>
       <button class="vt-btn ${calMode==='6month'?'active':''}" onclick="setCalMode('6month')">6 Months</button>
     </div>
     <div class="cal-filter-row" style="margin-bottom:0">
-      <span class="cal-filter-lbl">Show:</span>
+      <button class="cal-filt-btn ${calKeyOnly?'on':''}" onclick="setCalKeyOnly()" title="Show only overdue, due-soon, priority tasks, work spans, ranges and meetings">★ Key dates</button>
+      <button class="cal-filt-btn ${calShowDone?'on':''}" onclick="setCalShowDone()" title="Include completed tasks">✓ Done</button>
+      <span class="cal-filter-sep"></span>
       <button class="cal-filt-btn ${calFilter==='all'?'on':''}" onclick="setCalFilter('all')">All</button>
       <button class="cal-filt-btn ${calFilter==='tasks'?'on':''}" onclick="setCalFilter('tasks')">Tasks</button>
       <button class="cal-filt-btn ${calFilter==='meetings'?'on':''}" onclick="setCalFilter('meetings')">Meetings</button>
-      <button class="cal-filt-btn cal-filt-cad ${calFilter==='cad-review'?'on':''}" onclick="setCalFilter('cad-review')">📐 CAD Review</button>
+      <button class="cal-filt-btn cal-filt-cad ${calFilter==='cad-review'?'on':''}" onclick="setCalFilter('cad-review')">📐 CAD</button>
       <button class="cal-filt-btn cal-filt-mid ${calFilter==='midpoint-review'?'on':''}" onclick="setCalFilter('midpoint-review')">🔍 Midpoint</button>
       <button class="cal-filt-btn cal-filt-lf ${calFilter==='line-final'?'on':''}" onclick="setCalFilter('line-final')">✅ Line Final</button>
-      <button class="travel-filter-btn${calTravelFilter?' on':''}" onclick="setCalTravelFilter()">✈️ Travel only</button>
+      <button class="travel-filter-btn${calTravelFilter?' on':''}" onclick="setCalTravelFilter()">✈️ Travel</button>
       ${ownerOptions}
     </div>
-  </div>`
+  </div>
+  ${calUrgencyLegend()}`
 }
 
 function renderCalendar(p,m){
@@ -1833,31 +1899,10 @@ function renderMonthView(p,m){
   const daysInMonth=new Date(year,mon+1,0).getDate()
   const today=todayIso()
 
-  // Build task map: date → [{t, color, isSpan, prog}]
+  // Build task map: date → [{kind:'task-span'|'task-point', urgency color, …}]
   const taskMap={}
   if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
-    p.tasks.forEach(t=>{
-      if(!t.dueDate)return
-      const prog=t.progress||'not-started'
-      // Color by progress: gray-tinted for not started, member color for in-progress, green for done
-      let chipColor=prog==='completed'?'#3DAD76':m.color
-      if(prog==='not-started')chipColor=m.color+'88'
-      const key=t.dueDate
-      if(!taskMap[key])taskMap[key]=[]
-      taskMap[key].push({t,color:chipColor,p,prog})
-      // Span days
-      if(t.startDate&&t.startDate<t.dueDate){
-        let cur=new Date(t.startDate+'T00:00:00')
-        const end=new Date(t.dueDate+'T00:00:00')
-        cur.setDate(cur.getDate()+1)
-        while(cur<end){
-          const k=cur.toISOString().slice(0,10)
-          if(!taskMap[k])taskMap[k]=[]
-          taskMap[k].push({t,color:chipColor+'66',p,isSpan:true,prog})
-          cur.setDate(cur.getDate()+1)
-        }
-      }
-    })
+    p.tasks.forEach(t=>addTaskCalSegments(taskMap,t,{p}))
   }
 
   // Build meeting map: date → [meeting]
@@ -1890,14 +1935,14 @@ function renderMonthView(p,m){
   for(let d=1;d<=daysInMonth;d++){
     const iso=`${year}-${String(mon+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const isToday=iso===today
-    const tasks=taskMap[iso]||[]
+    const dayTasks=taskMap[iso]||[]
     const meetings=meetingMap[iso]||[]
     const ranges=projRangeMap[iso]||[]
     const allItems=[
-      ...ranges,
-      ...meetings.map(mt=>({isMeeting:true,mt})),
-      ...tasks.map(({t,color,isSpan,prog})=>({isMeeting:false,isProjDate:false,t,color,isSpan,prog}))
-    ]
+      ...ranges.map(r=>({...r,_r:-2})),
+      ...meetings.map(mt=>({isMeeting:true,mt,_r:-1})),
+      ...dayTasks.map(x=>({...x,_r:x.rank}))
+    ].sort((a,b)=>a._r-b._r)
     const shown=allItems.slice(0,3)
     const more=allItems.length-3
 
@@ -1908,18 +1953,15 @@ function renderMonthView(p,m){
           return `<div class="cal-chip cal-chip-proj-range ${item.segment}"
             title="${esc(item.p.name)}${item.p.startDate&&item.p.endDate?` (${item.p.startDate} to ${item.p.endDate})`:''}"
             onclick="event.stopPropagation();goProject('${item.p.id}')">
-            ${item.segment==='start'||item.segment==='single'?'◆ ':''}${esc(item.p.name.slice(0,20))}
+            ${item.segment==='start'||item.segment==='single'?'◆ ':''}${esc(item.p.name.slice(0,18))}
           </div>`
         }
         if(item.isMeeting){
           const cIco=MEETING_KIND_ICO[item.mt.kind]||'🤝'
           return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)}"
-            onclick="event.stopPropagation()">${cIco} ${esc(item.mt.title.slice(0,22))}</div>`
+            onclick="event.stopPropagation()">${cIco} ${esc(item.mt.title.slice(0,20))}</div>`
         }
-        return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)}"
-          onclick="event.stopPropagation();goProject('${p.id}')">
-          ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,22))}
-        </div>`
+        return taskChipHTML(item,p.id,item.t.text)
       }).join('')}</div>
       ${more>0?`<div class="cal-more">+${more} more</div>`:''}
       <span class="cal-add-hint">＋</span>
@@ -1940,6 +1982,7 @@ function render6Month(p,m){
 
   if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
     p.tasks.forEach(t=>{
+      if(!calTaskVisible(t))return
       if(t.dueDate)taskDates.add(t.dueDate)
       if(t.startDate&&t.dueDate){
         let cur=new Date(t.startDate+'T00:00:00')
@@ -2005,23 +2048,9 @@ function renderAllCalendar(){
       for(const p of b.projects){
         if(p.status==='archived')continue
         if(calFilter!=='meetings'&&!isMeetingTypeFilter()){
-          // Tasks
+          // Tasks (urgency-colored spans / deadline points)
           for(const t of p.tasks){
-            if(!t.dueDate)continue
-            const prog=t.progress||'not-started'
-            let chip=prog==='completed'?'#3DAD76':m.color
-            if(prog==='not-started')chip=m.color+'88'
-            addCalendarItem(taskMap,t.dueDate,{t,p,b,m,color:chip})
-            if(t.startDate&&t.startDate<t.dueDate){
-              let cur=new Date(t.startDate+'T00:00:00')
-              const end=new Date(t.dueDate+'T00:00:00')
-              cur.setDate(cur.getDate()+1)
-              while(cur<end){
-                const k=cur.toISOString().slice(0,10)
-                addCalendarItem(taskMap,k,{t,p,b,m,color:chip+'66',isSpan:true})
-                cur.setDate(cur.getDate()+1)
-              }
-            }
+            addTaskCalSegments(taskMap,t,{p,b,m})
           }
           addProjectRange(projMap,p,m,{b})
           // Travel items
@@ -2054,7 +2083,7 @@ function renderAllCalendar(){
   const daysInMonth=new Date(year,mon+1,0).getDate()
   const today=todayIso()
 
-  const filterRow=renderCalendarControls({showOwnerFilter:true})+`<div class="gcal-legend">${legend}</div>`
+  const filterRow=renderCalendarControls({showOwnerFilter:true})
 
   if(calMode==='6month'){
     const taskDates=new Set(Object.keys(taskMap))
@@ -2102,11 +2131,11 @@ function renderAllCalendar(){
     const tasks=calTravelFilter?[]:(taskMap[iso]||[])
     const travels=travelMap[iso]||[]
     const all=[
-      ...ranges,
-      ...travels.map(x=>({isTravel:true,...x})),
-      ...meets.map(x=>({isMeeting:true,...x})),
-      ...(calTravelFilter?[]:tasks.map(x=>({isProjDate:false,isMeeting:false,...x})))
-    ]
+      ...ranges.map(x=>({...x,_r:-2})),
+      ...travels.map(x=>({isTravel:true,...x,_r:-1.5})),
+      ...meets.map(x=>({isMeeting:true,...x,_r:-1})),
+      ...(calTravelFilter?[]:tasks.map(x=>({...x,_r:x.rank})))
+    ].sort((a,b)=>a._r-b._r)
     const shown=all.slice(0,3),more=all.length-3
     h+=`<div class="cal-day ${isToday?'today':''}" style="cursor:default">
       <div class="cal-day-num">${d}</div>
@@ -2128,10 +2157,7 @@ function renderAllCalendar(){
           return `<div class="cal-chip cal-chip-meeting" title="${esc(item.mt.title)} — ${esc(item.p.name)}"
             onclick="event.stopPropagation();goProject('${item.p.id}')">${gcIco} ${esc(item.mt.title.slice(0,20))}</div>`
         }
-        return `<div class="cal-chip" style="background:${item.color}" title="${esc(item.t.text)} — ${esc(item.p.name)}"
-          onclick="event.stopPropagation();goProject('${item.p.id}')">
-          ${item.isSpan?'—':''} ${esc(item.t.text.slice(0,20))}
-        </div>`
+        return taskChipHTML(item,item.p.id,`${item.t.text||''} — ${item.p?.name||''}`)
       }).join('')}</div>
       ${more>0?`<div class="cal-more">+${more} more</div>`:''}
     </div>`
