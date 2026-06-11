@@ -8,8 +8,18 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Studio W</title>
-<!-- Apple system fonts (SF Pro Display / SF Pro Text) — no web font load needed -->
+<!-- Editorial display serif (Instrument Serif) over the Apple system sans stack -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<!-- "Obsidian Atelier" redesign layer — overrides the visual language only -->
+<link rel="stylesheet" href="redesign.css">
+<!-- FX layer: GSAP motion + Three.js aurora. Deferred — runs after app.js,
+     and the app works untouched if these fail to load (offline). -->
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script defer src="fx.js"></script>
 
 </head>
 <body>
