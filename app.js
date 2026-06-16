@@ -371,11 +371,27 @@ function moveProjectToBrand(projectId,targetBrandId,beforeProjectId=null){
   openBrands.add(target.b.id)
   return true
 }
+// When a project lands on a different person, keep its brand/category with it:
+// reuse a same-named category under that person, or recreate one so nothing is orphaned.
+function ensureBrandOnMember(member,name){
+  const wanted=(name||'').trim().toLowerCase()
+  if(wanted){
+    const existing=(member.brands||[]).find(b=>(b.name||'').trim().toLowerCase()===wanted)
+    if(existing)return existing
+  }
+  const label=(name||'').trim()||(member.isMe?'My Projects':'Transferred Projects')
+  const brand=mkBrand(label,[])
+  member.brands.push(brand)
+  openBrands.add(brand.id)
+  return brand
+}
 function moveProjectToMember(projectId,targetMemberId){
   const source=findProject(projectId)
   const targetMember=state.members.find(m=>m.id===targetMemberId)
   if(!source||!targetMember)return false
-  const targetBrand=ensureMemberDropBrand(targetMember)
+  if(source.m.id===targetMemberId)return false  // dropped on its own person — nothing to do
+  // Carry the project's category across so it stays grouped under the new person.
+  const targetBrand=ensureBrandOnMember(targetMember,source.b.name)
   return moveProjectToBrand(projectId,targetBrand.id,null)
 }
 function sbDrop(e,type,id,parentId){
@@ -540,6 +556,7 @@ function renderMember(m){
             onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
             ${p.status==='archived'?'↩':'📦'}
           </button>
+          <button class="sb-act-btn del" title="Delete project" onclick="deleteProject('${p.id}');event.stopPropagation()">✕</button>
         </div>
       </div>`
     })
@@ -601,6 +618,7 @@ function renderBrand(b,memberId){
           onclick="toggleProjectArchive('${p.id}');event.stopPropagation()">
           ${p.status==='archived'?'↩':'📦'}
         </button>
+        <button class="sb-act-btn del" title="Delete project" onclick="deleteProject('${p.id}');event.stopPropagation()">✕</button>
       </div>
     </div>`
   })
@@ -675,9 +693,11 @@ function renderMain(){
   bc.innerHTML=`<span>${esc(m.name)}</span><span class="bc-sep">›</span><span>${esc(b.name)}</span><span class="bc-sep">›</span><span class="bc-cur">${esc(p.name)}</span>`
 
   if(p.status==='archived'){
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="unarchive()">↩ Unarchive</button>`
+    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="unarchive()">↩ Unarchive</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">🗑 Delete</button>`
   } else {
-    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="archiveProject()">Archive</button>`
+    acts.innerHTML=`<button class="btn btn-ghost btn-sm" onclick="archiveProject()">Archive</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">🗑 Delete</button>`
   }
 
   // Update view toggle buttons
@@ -3080,6 +3100,7 @@ function renderProjectModal(){
       </div>
       <button class="btn btn-ghost btn-sm" onclick="openModal('editProject','${p.id}')">✏ Rename</button>
       ${archBtn}
+      <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">🗑 Delete</button>
       <span class="proj-sheet-kbd" title="← → move between projects · Esc to close">‹ ›&nbsp;&nbsp;esc</span>
       <button class="proj-sheet-close" onclick="closeProjectModal()" title="Close (Esc)" aria-label="Close">✕</button>
     </div>
@@ -3255,7 +3276,11 @@ function renderTeamBoardBrandSection(m,b,projects,today){
     ondragover="tbBrandDragOver(event,'${esc(m.id)}','${esc(b.id)}')"
     ondragleave="tbBrandDragLeave(event)"
     ondrop="tbBrandDrop(event,'${esc(m.id)}','${esc(b.id)}')">
-    <div class="tb-brand-head">
+    <div class="tb-brand-head" draggable="true"
+      ondragstart="tbBrandHeadDragStart(event,'${esc(m.id)}','${esc(b.id)}')"
+      ondragend="tbBrandHeadDragEnd(event)"
+      title="Drag to move this category (and its projects) to another person">
+      <span class="tb-brand-grip">⠿</span>
       <span class="tb-brand-name">${esc(b.name)}</span>
       <span class="tb-brand-count">${projects.length}</span>
       <span class="tb-brand-acts">
@@ -3337,7 +3362,7 @@ function renderTeamBoardCard(p,m,b,today){
     ondragleave="tbCardDragLeave(event)"
     ondrop="tbCardDrop(event,'${esc(m.id)}','${esc(b.id)}','${esc(p.id)}')"
     title="Open ${esc(p.name)} · drag to reorder">
-    <div class="tb-card-titlerow"><span class="tb-status-dot" style="background:${st.color}" title="${esc(st.label)}"></span><span class="tb-card-name">${esc(p.name)}</span></div>
+    <div class="tb-card-titlerow"><span class="tb-status-dot" style="background:${st.color}" title="${esc(st.label)}"></span><span class="tb-card-name">${esc(p.name)}</span><button class="tb-card-del" draggable="false" title="Delete project" onclick="event.stopPropagation();deleteProject('${esc(p.id)}')">✕</button></div>
     <div class="tb-card-meta">
       ${total?`<span class="tb-card-tasks" title="${done} of ${total} tasks complete">✓ ${done}/${total}</span>`:'<span class="tb-card-tasks tb-empty">No tasks</span>'}
       ${overdueCount?`<span class="tb-card-overdue" title="${overdueCount} overdue task${overdueCount===1?'':'s'}">⚠ ${overdueCount} overdue</span>`:''}
@@ -3430,6 +3455,15 @@ function tbColHeadDragEnd(e){
   _tbDrag=null
 }
 function tbColDragOver(e,mid){
+  // A category dragged over a column → highlight the whole column as a drop target.
+  if(_tbDrag?.kind==='brand'){
+    e.preventDefault()
+    e.dataTransfer.dropEffect='move'
+    const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
+    document.querySelectorAll('.tb-col-droptarget').forEach(el=>el.classList.remove('tb-col-droptarget'))
+    if(col)col.classList.add('tb-col-droptarget')
+    return
+  }
   if(_tbDrag?.kind!=='col')return
   if(_tbDrag.mid===mid)return
   e.preventDefault()
@@ -3446,9 +3480,17 @@ function tbColDragLeave(e,mid){
   // Only clear if leaving the column entirely
   const col=document.querySelector(`.tb-col[data-mid="${CSS.escape(mid)}"]`)
   if(!col)return
-  if(!col.contains(e.relatedTarget))col.classList.remove('tb-col-drop-before','tb-col-drop-after')
+  if(!col.contains(e.relatedTarget))col.classList.remove('tb-col-drop-before','tb-col-drop-after','tb-col-droptarget')
 }
 function tbColDrop(e,mid){
+  // Category dropped on a column → move it (with its projects) to that person.
+  if(_tbDrag?.kind==='brand'){
+    e.preventDefault()
+    const changed=moveBrandToMember(_tbDrag.bid,mid,null)
+    tbBrandHeadDragEnd()
+    if(changed){save();render()}
+    return
+  }
   // Card dropped on column body (not on a card or brand) → append to last brand
   if(_tbDrag?.kind==='card'){
     e.preventDefault()
@@ -3520,8 +3562,38 @@ function tbCardDrop(e,tgtMid,tgtBid,tgtPid){
   render()
 }
 
+// ── Category (brand) header drag — move a whole category between people on the board ──
+function tbBrandHeadDragStart(e,mid,bid){
+  // Don't start a category drag from the rename/delete buttons.
+  if(_lastMouseDownEl&&_lastMouseDownEl.closest&&_lastMouseDownEl.closest('.tb-brand-act')){e.preventDefault();return}
+  _tbDrag={kind:'brand',mid,bid}
+  e.dataTransfer.effectAllowed='move'
+  try{e.dataTransfer.setData('text/plain',bid)}catch{}
+  const sec=document.querySelector(`.tb-brand-section[data-mid="${CSS.escape(mid)}"][data-bid="${CSS.escape(bid)}"]`)
+  if(sec)sec.classList.add('tb-brand-dragging')
+  e.stopPropagation()
+}
+function tbBrandHeadDragEnd(e){
+  _tbJustDragged=true
+  setTimeout(()=>{_tbJustDragged=false},50)
+  document.querySelectorAll('.tb-brand-dragging,.tb-brand-drop,.tb-brand-drop-before,.tb-col-droptarget,.tb-col-drop-before,.tb-col-drop-after')
+    .forEach(el=>el.classList.remove('tb-brand-dragging','tb-brand-drop','tb-brand-drop-before','tb-col-droptarget','tb-col-drop-before','tb-col-drop-after'))
+  _tbDrag=null
+}
+
 // ── Brand-section drop (drop into an empty area within a brand group) ──
 function tbBrandDragOver(e,mid,bid){
+  // A category dropped onto another category → place it just before that one.
+  if(_tbDrag?.kind==='brand'){
+    if(_tbDrag.bid===bid)return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect='move'
+    const sec=document.querySelector(`.tb-brand-section[data-mid="${CSS.escape(mid)}"][data-bid="${CSS.escape(bid)}"]`)
+    document.querySelectorAll('.tb-brand-drop-before').forEach(el=>el.classList.remove('tb-brand-drop-before'))
+    if(sec)sec.classList.add('tb-brand-drop-before')
+    return
+  }
   if(_tbDrag?.kind!=='card')return
   // Only highlight if the cursor is on the section background, not on a child card
   if(e.target.closest('.tb-card'))return
@@ -3535,6 +3607,15 @@ function tbBrandDragLeave(e){
   // Cleared on dragend
 }
 function tbBrandDrop(e,mid,bid){
+  if(_tbDrag?.kind==='brand'){
+    if(_tbDrag.bid===bid){tbBrandHeadDragEnd();return}
+    e.preventDefault()
+    e.stopPropagation()
+    const changed=moveBrandToMember(_tbDrag.bid,mid,bid)  // insert before this category
+    tbBrandHeadDragEnd()
+    if(changed){save();render()}
+    return
+  }
   if(_tbDrag?.kind!=='card')return
   if(e.target.closest('.tb-card'))return  // card-level drop will handle it
   e.preventDefault()
@@ -3548,10 +3629,11 @@ function tbBrandDrop(e,mid,bid){
 // Card dropped on a column body but not on any card/brand → append to last brand of that member.
 function handleCardDropOnColumn(mid){
   const m=state.members.find(x=>x.id===mid)
-  if(!m||!m.brands||!m.brands.length)return
-  // Pick the source brand if it exists in this member, else last brand
+  if(!m)return
   const src=findProject(_tbDrag.pid)
-  let targetBrand=m.brands.find(b=>src && b.name===src.b.name) || m.brands[m.brands.length-1]
+  if(!src)return
+  // Bring the project's category along: reuse a same-named one or create it.
+  const targetBrand=ensureBrandOnMember(m,src.b.name)
   moveProjectInto(mid,targetBrand.id,null,true)
 }
 
@@ -3780,6 +3862,21 @@ function archiveProject(){
   },'Archive')
 }
 function unarchive(){const f=sel();if(!f)return;f.p.status='active';save();render()}
+
+// Permanently delete a project (not archive). Always asks first.
+// Pass a project id, or omit to delete the currently-open project.
+function deleteProject(pid){
+  const f=pid?findProject(pid):sel()
+  if(!f)return
+  const {p,b}=f
+  const n=(p.tasks||[]).length
+  const extra=n?` Its ${n} task${n===1?'':'s'} will be deleted too.`:''
+  showConfirm(`Delete the project “${esc(p.name)}”?${extra} This can't be undone.`,()=>{
+    b.projects=b.projects.filter(x=>x.id!==p.id)
+    if(selId===p.id)selId=null  // render() will auto-close the open project sheet
+    save();render()
+  },'Delete project')
+}
 
 // ══════════════════════════════════════════════════════
 //  TASK CRUD
@@ -4404,22 +4501,15 @@ function deleteBrand(id){
   const {b,m}=fb
   const count=b.projects.length
   const doDelete=()=>{
-    // Deleting a brand/category never deletes its projects — they move to an "Unnamed" category.
-    if(count>0){
-      let dest=m.brands.find(x=>x.id!==b.id && (x.name||'').trim().toLowerCase()==='unnamed')
-      if(!dest){dest=mkBrand('Unnamed',[]);m.brands.push(dest)}
-      dest.projects.push(...b.projects)
-      b.projects=[]
-      openMembers.add(m.id);openBrands.add(dest.id)
-    }
+    // True delete: the category and everything inside it is removed.
+    if(selId && b.projects.some(p=>p.id===selId))selId=null  // clear selection if open project lived here
     m.brands=m.brands.filter(x=>x.id!==id)
     save();render()
   }
-  if(count>0){
-    showConfirm(`Delete the category “${esc(b.name)}”? Its ${count} project${count===1?'':'s'} will move to “Unnamed” — they won't be deleted.`,doDelete,'Delete category')
-  }else{
-    showConfirm(`Delete the empty category “${esc(b.name)}”?`,doDelete,'Delete category')
-  }
+  const msg=count>0
+    ? `Delete the category “${esc(b.name)}” and its ${count} project${count===1?'':'s'}? This can't be undone.`
+    : `Delete the empty category “${esc(b.name)}”?`
+  showConfirm(msg,doDelete,'Delete category')
 }
 
 // ══════════════════════════════════════════════════════

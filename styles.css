@@ -437,6 +437,19 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,
 .tb-brand-section.tb-brand-drop{outline:2px dashed var(--acc);outline-offset:3px;border-radius:8px;background:rgba(var(--acc-rgb),.05)}
 .tb-card[draggable]{cursor:grab}
 .tb-card[draggable]:active{cursor:grabbing}
+/* Category (brand) header drag — move a whole category between people */
+.tb-brand-grip{font-size:11px;color:var(--bdr);opacity:.5;flex-shrink:0;line-height:1;transition:opacity .12s}
+.tb-brand-head:hover .tb-brand-grip{opacity:1;color:var(--tm)}
+.tb-brand-head[draggable="true"]{cursor:grab}
+.tb-brand-head[draggable="true"]:active{cursor:grabbing}
+.tb-brand-section.tb-brand-dragging{opacity:.4}
+.tb-brand-section.tb-brand-drop-before{position:relative}
+.tb-brand-section.tb-brand-drop-before::before{content:"";position:absolute;left:-2px;right:-2px;top:-5px;height:3px;background:var(--acc);border-radius:2px;pointer-events:none;box-shadow:0 0 0 4px rgba(var(--acc-rgb),.18)}
+.tb-col.tb-col-droptarget{outline:2px dashed var(--acc);outline-offset:-4px;border-radius:14px;background:rgba(var(--acc-rgb),.05)}
+/* Delete (✕) button on a project card — appears on hover */
+.tb-card-del{margin-left:auto;flex-shrink:0;background:none;border:none;cursor:pointer;padding:1px 5px;border-radius:5px;font-size:12px;line-height:1;color:var(--tm);opacity:0;transition:opacity .14s,background .12s,color .12s}
+.tb-card:hover .tb-card-del,.tb-card:focus-within .tb-card-del{opacity:.55}
+.tb-card-del:hover{opacity:1;color:#fff;background:var(--red)}
 @media (max-width:760px){
   .tb-col{flex:0 0 84vw;width:84vw}
 }
